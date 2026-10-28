@@ -10,7 +10,7 @@ From the repository root:
 ```sh
 make -C third_party/janet
 third_party/janet/build/janet -v
-third_party/janet/build/janet janet/tests/run.janet
+third_party/janet/build/janet janet-utils/tests/run.janet
 ```
 
 A C99 compiler and the platform math/thread libraries are required; Linux also

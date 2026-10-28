@@ -9,7 +9,7 @@ Littlebear provides shared synchronization when an application needs it.
 | `datafriend/` | Native C99 database, queries, identities, and sync client |
 | `littlebear/` | Linux io_uring synchronization server |
 | `datafriend-web/` | Separate Emscripten/browser fork, including its JavaScript API |
-| `janet/` | Reusable HTTP, WebSocket, JSON, and tracing modules from Visualize |
+| `janet-utils/` | Reusable HTTP, WebSocket, JSON, and tracing modules from Visualize |
 | `containers/` | Shared header-only C containers |
 | `third_party/` | Janet runtime source, pinned AELMDB, Monocypher, xxHash, and browser-fork test dependencies |
 | `docs/` | Native API, protocol, storage, and reconciliation documentation |
@@ -42,8 +42,8 @@ Build the bundled Janet runtime and check the utilities:
 
 ```sh
 make -C third_party/janet
-third_party/janet/build/janet janet/tests/run.janet
-VISUALIZE_TRACE=1 third_party/janet/build/janet janet/tests/run.janet
+third_party/janet/build/janet janet-utils/tests/run.janet
+VISUALIZE_TRACE=1 third_party/janet/build/janet janet-utils/tests/run.janet
 ```
 
 The browser fork requires Emscripten (originally tested with 6.0.13) and Node.js:

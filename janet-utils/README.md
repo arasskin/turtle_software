@@ -35,7 +35,7 @@ This example assumes the file is next to these modules. The HTTP and WebSocket
 modules can be used together through the `:upgrade` response callback. These utilities
 are not a generic Datafriend binding or an application packaging system yet.
 
-Run `janet janet/tests/run.janet` from the repository root. The extracted tests cover
+Run `janet janet-utils/tests/run.janet` from the repository root. The extracted tests cover
 the reusable modules; tests of Visualize's actual HTML/assets and its patched Janet
 Unix-socket runtime remain in Visualize.
 Tracing retains the `VISUALIZE_TRACE=1` environment variable for compatibility.
