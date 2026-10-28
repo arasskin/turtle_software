@@ -195,6 +195,11 @@
     "janet/tests/websocket.janet": "e12494525a6247db96e6aff32a75b5340dc7ddfdff3f453408565e9f7a078eb6",
     "janet/tests/http.janet": "98bb740430d48f2934ee89f27a8e3af32688028d582f77b243f7d0fadca58baa",
     "janet/tests/json.janet": "6ec26f08b3f6a4a39096ac849e4073a43655bcce2c198547a732f600e034a8cb",
-    "janet/tests/harness.janet": "97ac0a7a809fd93f4d62527f530df738dde70da33dcec3919c72a5486d3a7c59"
+    "janet/tests/harness.janet": "97ac0a7a809fd93f4d62527f530df738dde70da33dcec3919c72a5486d3a7c59",
+    "third_party/janet/janet.c": "6f6708ab96e100f3a6d83557d4eb7a8b349ad92b6d97e50708b653b4515a667f",
+    "third_party/janet/janet.h": "b82d7415df6826bdc3207624c56425bbfa5d783b88658330e58413f1f562f3e5",
+    "third_party/janet/shell.c": "63c964253bbed159ecb1df890202278402f556260f56ee8014ce50bfbd6f2834",
+    "third_party/janet/LICENSE": "5d2996a351bb38f744b963687a36449b1175dac480b540cc74914425c9b23340",
+    "third_party/janet/SHA256SUMS": "75370a969d8039ad39c2042cfc798c6b26d6087fe3f1cd46cda26cc10e0b4e55"
   }
 }

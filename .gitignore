@@ -16,3 +16,4 @@ __pycache__/
 /node_modules/
 /data/
 /visualize_config
+/third_party/janet/janet

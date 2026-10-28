@@ -11,7 +11,7 @@ Littlebear provides shared synchronization when an application needs it.
 | `datafriend-web/` | Separate Emscripten/browser fork, including its JavaScript API |
 | `janet/` | Reusable HTTP, WebSocket, JSON, and tracing modules from Visualize |
 | `containers/` | Shared header-only C containers |
-| `third_party/` | Pinned AELMDB, Monocypher, xxHash, and browser-fork test dependencies |
+| `third_party/` | Janet runtime source, pinned AELMDB, Monocypher, xxHash, and browser-fork test dependencies |
 | `docs/` | Native API, protocol, storage, and reconciliation documentation |
 
 These are the existing components brought together, not yet an application launcher
@@ -38,11 +38,12 @@ make -C littlebear test
 make -C littlebear server
 ```
 
-Janet utilities:
+Build the bundled Janet runtime and check the utilities:
 
 ```sh
-janet janet/tests/run.janet
-VISUALIZE_TRACE=1 janet janet/tests/run.janet
+make -C third_party/janet
+third_party/janet/build/janet janet/tests/run.janet
+VISUALIZE_TRACE=1 third_party/janet/build/janet janet/tests/run.janet
 ```
 
 The browser fork requires Emscripten (originally tested with 6.0.13) and Node.js:
@@ -65,7 +66,7 @@ remain with their sources. Janet modules retain Visualize's MIT license.
 
 On the original development machine, compatibility symlinks keep DrawDo's
 `datafriend/` and `littlebear/`, Dinopolis' `datafriend/` and browser assets, and
-Visualize's four Janet modules pointing here. They are local conveniences, not
+Visualize's four Janet modules and vendored runtime directory pointing here. They are local conveniences, not
 requirements for cloning or building this repository. Shared containers and vendor
 sources were copied, leaving other applications' dependencies in place.
 
