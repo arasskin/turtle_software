@@ -1,0 +1,31 @@
+[Unit]
+Description=Littlebear TCP namespace cache (Ed25519 owner writes)
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=littlebear
+Group=littlebear
+WorkingDirectory=/var/lib/littlebear
+ExecStart=/opt/littlebear/current/littlebear/build/server --bind 0.0.0.0 --port 7777 --values /var/lib/littlebear/littlebear.values
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=15
+# Admission is governed by the server's memory budget; avoid systemd's small
+# default soft descriptor limit becoming an implicit connection-count cap.
+LimitNOFILE=1048576
+StateDirectory=littlebear
+StateDirectoryMode=0750
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/littlebear
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

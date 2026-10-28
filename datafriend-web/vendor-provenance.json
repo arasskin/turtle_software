@@ -1,0 +1,132 @@
+{
+  "datafriend": {
+    "source": "../drawdo/datafriend",
+    "files": {
+      ".gitignore": "1ea2d2455f7a32a110d03d4cc22aa30f97513c84de1e2fe5636b4ad87a0640ee",
+      "CMakeLists.txt": "a36a267a189ff85c4dd4cc92828aef61b1a053d3a6ede49000340d1e78a6db95",
+      "Datafriend.podspec": "d79ada790fef7d0b60fd1444bc73bbf4db5c3f4d5872786e48022fe598ef62dc",
+      "Makefile": "9f9aafb18e2681b82a601416be2184bfc90e53e53acf114f2cad9ca48c0fbc57",
+      "NOTICE.md": "c7a5f49c73c2a42aa97d2b56f48bea09da1d896807595391279449bddd318085",
+      "README.md": "b7cdeb038833f86544b278376be3f82d62fc066e0151f69870da17ffac1e07a1",
+      "include/datafriend/attributes.h": "1c0b47466e442815ae56f531e08882000b844fc3126ad64937afdb1c733676dc",
+      "include/datafriend/c_api.h": "582456b70b6b6977f1240c2e5e54af52d7cb5f260d48df675b76d82c8b86cc64",
+      "include/datafriend/core.h": "352afdf804d2be4ba991e5641bfda2ae2596e100da34c2736316ff12cd0714d4",
+      "include/datafriend/cpp/engine.h": "508c2679f2e0f886a19d6285a4df579eac4dd8954d2730d2e126df0fdc092538",
+      "include/datafriend/cpp/identity.h": "b54bba6a5713964a1605281abd6f14619f27b180947a990665077b923220abaf",
+      "include/datafriend/cpp/network.h": "da5479100ee7da97c681aa599e5318f1901c668bdb14a2d896c76ae49f667ce0",
+      "include/datafriend/db.h": "e2da6362be053c54fa8e32e709d16b7d1c4d4ac613a7619f2d38993b0f1b1939",
+      "include/datafriend/engine.h": "dd8a07ae53e23cf22b39e5f44c7d090bca198b23f68fa3939a04f86cd0f209f1",
+      "include/datafriend/identity.h": "8e65dfd1a45b7f053713b45d3fa66523a2e161f531f132afaab7d3b0db657845",
+      "include/datafriend/network.h": "8968c83170487318820104953c57172657abcfe4245aaea3a446708dab5f0b91",
+      "include/datafriend/schema.h": "4c01b630bfd2ac2f4e9499404b14122f9cc0727350cf76eb6d8d0485d75bde48",
+      "include/datafriend/tree_allocator.h": "c39c06d652258d86b17d15ed118425f60052cee5dc187aa5f6c6fa4275bf1eca",
+      "include/datafriend/wide_tree.h": "3ff360ce6824055a80f65b9fdc9f10313fd6e81ad1447eb986c94470a0491993",
+      "include/datafriend/wire_codec.h": "2fc8ea279d0b8b12c6824800bfddc65eeef8271d32ab3ade8c8be14f1ac205ab",
+      "licenses/epl-v10.html": "3fca867b3c667fe8ea87bb1822c3fe68c500dd878fc86e05339b21dd2b471f48",
+      "platform/android/keystore.c": "23370de5c7ed2e985570c6074be33e5f1fa4a4f5ffeed64650977075abbe7b4c",
+      "platform/android/proguard-rules.pro": "db9904d895432623987aa243f1710ec07e656ed575ba7a3a7d153a965d901c45",
+      "platform/android/src/main/java/dev/drawdo/datafriend/IdentityStore.java": "7c05ad99ea7c49ba25e1c009584f010fd4dd833137720a93f0c3f98908e6e1ec",
+      "platform/apple/keychain.c": "c6814132fad56cd7c254d86d888e1d6c315507159596d87d0286c6de4386ef59",
+      "platform/apple/vendor/aelmdb.c": "c01ee12536a9e537f77d451329ffe410e398c27b140e921797777250f5808fa4",
+      "platform/apple/vendor/ed25519.c": "63715f0a28c59978e4e87e3c2757675f77b6a75f992f0a471765c1cf6e6592f9",
+      "platform/apple/vendor/monocypher.c": "a5de601039e567e19309d37e8ebaee16f9484e1c93cda77bed95d516477bc3d9",
+      "schema/attributes.json": "7f970dc96b6192f3f5d86570d9fd95b310ea112936ac78026613e806584aec7d",
+      "src/async_flush.h": "d61b19505d963662070ee8a19c1c5873c95c62f15cf57bbf8ec5c229c7ef214a",
+      "src/common.h": "6f36e5a026caa53b9464bbcafcd8136238cb1985b966ff954d27cff7eafa1db2",
+      "src/db.c": "9bef36b0aa7080dda2e29d1c1366fb45d97b8a4f2edd7a884dd203979ef4fbf6",
+      "src/engine.c": "8463afb7197a530fcec58c6f1dcb22938fb31d26ce387eb15669c57a5225ea3f",
+      "src/flush.c": "41627e33a09396197d002fa84655ea669a30546dc4c42a8335e116bb9bdd940e",
+      "src/flush.h": "694135578e2a6960d2e69d78bf062d93aacb5ff4fc78715c025f502c81b01372",
+      "src/identity.c": "44642a1955a9fd24f725dfba06dade970f16cd0daf3af52074e6fa203b9cba51",
+      "src/memory.c": "9049ce149f1b29f8894cb7b6de8d05363154bfb0d969d4fe066da567fc91a22c",
+      "src/network.c": "8ede8e62097af9bda7ce97b97b735786858978e69e29c884aa2a1ff7eb1d69dd",
+      "src/query.c": "d1921e7e43ee41aed720b0e625b19c0f39821170852dc19048974cc1927a2fd8",
+      "src/result.c": "a49cc86af26de5c39a1f26cc083f87c1526c5efcefe48ccedfecf792b898aeb7",
+      "src/store.h": "27689dd8f2c674100e71d7b5cd1e100246e3cffdec6ab3d2262decdafe2203b0",
+      "src/sync.c": "ddb33e76f03766ee88cf5a72cffc473d532bbbbb11064b424d6108711efab5f7",
+      "tests/async_flush_test.cpp": "8454f80b92b661e90c329a15bff6697b5a87db95b40b6ff151a57e73224d3ba1",
+      "tests/c99_test.c": "13eb35c537b7664c93350d7f42a6a32a2924fbc487b6c32af3c9ae54439fff33",
+      "tests/channel_test.c": "c73fa315912214a93c71d08c5c5df175fba49d37d0f1b85ff1a67b7cbfccbf37",
+      "tests/db_test.c": "8710401578d6dfec5d2709ceaeb8be9c4aceef22b3a2627bba4e6f829cdb7a0b",
+      "tests/engine_test.cpp": "4b536fc864702f42af858479cca5392290c369b9a1a5d7a87abbc28ba8872979",
+      "tests/identity_test.cpp": "ff9706cd4c4f1f0834c9f5fe7ceb15aea54976b180edaf927627693d9ecd8f54",
+      "tests/network_integration.dart": "619bc53d240d14382c2784df90929ae591d31d76f733b57fccec6a8f2fcf1fc5",
+      "tests/network_test.cpp": "afe0f1e3d4bd028598dd1a804fde4c9d16862969d1763c6fb8d41ee3745c8ac5",
+      "tests/slab_test.cpp": "20a272d2e3abb831197dc714da3ff27c502acf01c40ca91aa37232009cfbb3fd",
+      "tests/transport_test.cpp": "77557b46ca138334a3a86e299985ef432ecbca84c74b83f6835e0445d118b396",
+      "tool/generate_attributes.py": "b81ed99fae2ee1971b6f8dc1745291cf74f57f5ec7869a580931bf778d210f89"
+    },
+    "commit": "73c4b9c5bb4e198599c9b65366fd400253eb0954",
+    "working_tree_status": ""
+  },
+  "containers": {
+    "source": "../drawdo/containers",
+    "files": {
+      "Makefile": "0de6c756a065211593e58331edcdd7c7bd6c2c40aa8d5edecaac9f6c036e0d16",
+      "README.md": "94b20c453c0d009a7ffed540fcfc0e412a713e902f22ab9489d087b793048330",
+      "arena.h": "3fc2b0bb0519ca84cea3f0d08d32cbd8888d5266e2271db885d358779aae28f5",
+      "array.h": "c21e8f643fea6e8ff93d8ef4a40b8c7bf72dc85a57803abc6695a360e98bade2",
+      "base.h": "8ff7481077edb118c5f5b8b270e88d7b6dc1f9384911323c5c84a9f6b85f4686",
+      "buffer.h": "ede4dd8fac61471f3aef44fffdacdae79c1647c68955f66380d4f100f1dd351b",
+      "bytes.h": "5a574cc35a43b17d6ee4329d6e68e5499522fda024fed79de4aef2d9863e038e",
+      "map.h": "af546b04c5360e7eab824e8217f5a667d6ca95c1bd2f0c861f6164c26ea2f858",
+      "pool.h": "0d514d16f19122a49800233c89cc70920e39702754ec686fe072ee326858f330",
+      "tests/containers_test.c": "5a99b46ff94f342e026ddcce61262815dfe0d85dd178e7ecce741fdca33513d1",
+      "tree.h": "a967a2b73f7e9375e39e0c4dca67d4adf4f5abd3cc8508f9ec97ee4fc9a759a9"
+    }
+  },
+  "third_party/aelmdb": {
+    "source": "../drawdo/third_party/aelmdb",
+    "files": {
+      "LICENSE": "34b2170ddf73b28eed5e27f86106ca15358bde86361a7ac42ac947c49db0b53e",
+      "README.md": "8ac4fd55a718613eb7e8664e134411165a73752ac9723e03c3b9b747498b846e",
+      "UPSTREAM.json": "f8d3c8f630d774940562b54caedc6ca75046042aa4d266f778e18552afe4021d",
+      "src/lmdb.h": "788ad72586ddd2fa258934765f06d286d41f8ad3416349c4be7a1fd01060b9fb",
+      "src/mdb.c": "42ada08042de271fe521bf1a54600ef6f948e897198343d57170fb0f628a63e7",
+      "src/mdb_agg_debug.c": "eeb2ab1de33196530e1e3b2e8bfd5c6e78a6293e08735f7e3a008cb1667f289f",
+      "src/mdb_agg_internal.h": "67f695fba6d9388413bfe91c51a90fcf1457e4184255a9c23f62b329fc86e45d",
+      "src/mdb_agg_maint.c": "6c0d1a12be5a4d6b4d85e0f49e1f15d7468313963ad53cbf6f58080864846623",
+      "src/mdb_agg_query.c": "ad7e433f00d6ba823811dc67f03e425ac8f79c261f8b348415ea2e6f27bce2ea",
+      "src/midl.c": "d3afcbb49885258736b4391d98e6bf511caa1cf73e5b1ac9bba287a0b7d322dc",
+      "src/midl.h": "241def3133085354b0a3186eb6a8ef4e94032e770c8f8b98f99b6615dd0fc1c3"
+    }
+  },
+  "third_party/monocypher": {
+    "source": "../drawdo/third_party/monocypher",
+    "files": {
+      "LICENCE.md": "5f8360e4c06ddcc584bdb4b210c6af824c4bb301e6a9a521869b6d90795ca4b3",
+      "UPSTREAM.json": "ad9047f368bfeeeabcaf65773f67dbf4caec0852fd2072b74d47e0e054ea7c8f",
+      "monocypher-ed25519.c": "60fce3578fb00b00da96490653d993c4cb427b1e1be38183285c66e04d22cc18",
+      "monocypher-ed25519.h": "abc4fad381879f5c29176ebe014b9189956b3dfe0a3e36459b6990bc57212380",
+      "monocypher.c": "57eb914fc88136119bd41655cccb8c250048bf54d470540625186f8ab16f64be",
+      "monocypher.h": "c494da712122da7ff679fdcf318a5317e84972b6c950fe9d896212947797facd"
+    }
+  },
+  "third_party/xxhash": {
+    "source": "../drawdo/third_party/xxhash",
+    "files": {
+      "xxhash.h": "614b328c429d2899c950d4e1c8da8dd338b2a6504afd0877215e25bd3f44559e"
+    }
+  },
+  "third_party/unordered_dense": {
+    "source": "../drawdo/third_party/unordered_dense",
+    "files": {
+      "LICENSE": "4f5a62734899ec0ba85d3e8264a7ed1fcb4bcb8f0b4359c0afd627b6314ae599",
+      "README.md": "0f222ba382769a92e76772bea22968ed92124c52e4b29f1130dcca63465ead88",
+      "include/ankerl/stl.h": "a73b0ee57096fdd19694fdc9b462e7a3a9b5dfc4df8fe94fecd4bf974cfcf80e",
+      "include/ankerl/unordered_dense.h": "cbcecc9789ae904b9e678457ddfceda94c01dcd3a8848853add4cfc910ea97fc"
+    }
+  },
+  "datafriend_protocol": {
+    "source": "../drawdo/littlebear/src",
+    "commit": "a879203b3d0604b2c77b104e15a47887f66e5be8",
+    "note": "Client-required protocol headers retained byte-for-byte from the copied working tree; the Littlebear server copy was removed.",
+    "files": {
+      "base.h": "db73ffd59cbeb7ee09fd526224dc354fc1bee0beb4e7679c5ffdb006a7fa2278",
+      "codec.h": "36b5ce0cf2ac9ab4520ce2900138507e9950e59c8e43407b74d94e816b330edf",
+      "reconcile.h": "c81d7619315ee4cfac11dc7be5fc56657424a0c6b2a1781955a2a59ce0f0c05a",
+      "cpp/codec.h": "e78b39bce9b94a92024062afa95e28381c8d127003910d7b74ff62c97339db18",
+      "cpp/reconcile.h": "c0f40d399bb606aae6c84450b8f5c80c5a6e8ae420def751ddeea363d3f2023e"
+    }
+  }
+}

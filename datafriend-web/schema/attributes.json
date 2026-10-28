@@ -1,0 +1,445 @@
+{
+  "version": 1,
+  "attributes": [
+    {
+      "id": 1,
+      "symbol": "kind",
+      "name": "kind"
+    },
+    {
+      "id": 2,
+      "symbol": "title",
+      "name": "title"
+    },
+    {
+      "id": 3,
+      "symbol": "done",
+      "name": "done"
+    },
+    {
+      "id": 4,
+      "symbol": "order",
+      "name": "order"
+    },
+    {
+      "id": 5,
+      "symbol": "id",
+      "name": "id"
+    },
+    {
+      "id": 6,
+      "symbol": "asset",
+      "name": "asset"
+    },
+    {
+      "id": 7,
+      "symbol": "label",
+      "name": "label"
+    },
+    {
+      "id": 8,
+      "symbol": "x",
+      "name": "x"
+    },
+    {
+      "id": 9,
+      "symbol": "y",
+      "name": "y"
+    },
+    {
+      "id": 10,
+      "symbol": "stroke",
+      "name": "stroke"
+    },
+    {
+      "id": 11,
+      "symbol": "part",
+      "name": "part"
+    },
+    {
+      "id": 12,
+      "symbol": "page",
+      "name": "page"
+    },
+    {
+      "id": 13,
+      "symbol": "color",
+      "name": "color"
+    },
+    {
+      "id": 14,
+      "symbol": "points",
+      "name": "points"
+    },
+    {
+      "id": 15,
+      "symbol": "appInitialized",
+      "name": "app/initialized"
+    },
+    {
+      "id": 16,
+      "symbol": "owner",
+      "name": "owner"
+    },
+    {
+      "id": 17,
+      "symbol": "name",
+      "name": "name"
+    },
+    {
+      "id": 18,
+      "symbol": "project",
+      "name": "project"
+    },
+    {
+      "id": 19,
+      "symbol": "parent",
+      "name": "parent"
+    },
+    {
+      "id": 20,
+      "symbol": "group",
+      "name": "group"
+    },
+    {
+      "id": 21,
+      "symbol": "team",
+      "name": "team"
+    },
+    {
+      "id": 22,
+      "symbol": "region",
+      "name": "region"
+    },
+    {
+      "id": 23,
+      "symbol": "next",
+      "name": "next"
+    },
+    {
+      "id": 24,
+      "symbol": "ownerTeam",
+      "name": "owner_team"
+    },
+    {
+      "id": 25,
+      "symbol": "skew",
+      "name": "skew"
+    },
+    {
+      "id": 26,
+      "symbol": "simulationCount",
+      "name": "simulation/count"
+    },
+    {
+      "id": 27,
+      "symbol": "simulationPaused",
+      "name": "simulation/paused"
+    },
+    {
+      "id": 28,
+      "symbol": "simulationLocal",
+      "name": "simulation/local"
+    },
+    {
+      "id": 29,
+      "symbol": "simulationPatchColumn",
+      "name": "simulation/patch-column"
+    },
+    {
+      "id": 30,
+      "symbol": "simulationPatchRow",
+      "name": "simulation/patch-row"
+    },
+    {
+      "id": 31,
+      "symbol": "simulationAutomatic",
+      "name": "simulation/automatic"
+    },
+    {
+      "id": 32,
+      "symbol": "taskFilter",
+      "name": "tasks/filter"
+    },
+    {
+      "id": 33,
+      "symbol": "taskSelected",
+      "name": "tasks/selected"
+    },
+    {
+      "id": 1001,
+      "symbol": "a",
+      "name": "a"
+    },
+    {
+      "id": 1002,
+      "symbol": "b",
+      "name": "b"
+    },
+    {
+      "id": 1003,
+      "symbol": "big",
+      "name": "big"
+    },
+    {
+      "id": 1004,
+      "symbol": "blob",
+      "name": "blob"
+    },
+    {
+      "id": 1005,
+      "symbol": "bytes",
+      "name": "bytes"
+    },
+    {
+      "id": 1006,
+      "symbol": "extra",
+      "name": "extra"
+    },
+    {
+      "id": 1007,
+      "symbol": "hidden",
+      "name": "hidden"
+    },
+    {
+      "id": 1008,
+      "symbol": "later",
+      "name": "later"
+    },
+    {
+      "id": 1009,
+      "symbol": "nil",
+      "name": "nil"
+    },
+    {
+      "id": 1010,
+      "symbol": "nullable",
+      "name": "nullable"
+    },
+    {
+      "id": 1011,
+      "symbol": "mirror",
+      "name": "mirror"
+    },
+    {
+      "id": 1012,
+      "symbol": "self",
+      "name": "self"
+    },
+    {
+      "id": 1013,
+      "symbol": "missing",
+      "name": "missing"
+    },
+    {
+      "id": 1014,
+      "symbol": "absent",
+      "name": "absent"
+    },
+    {
+      "id": 1015,
+      "symbol": "unknown",
+      "name": "unknown"
+    },
+    {
+      "id": 1016,
+      "symbol": "unrelated",
+      "name": "unrelated"
+    },
+    {
+      "id": 1017,
+      "symbol": "ref",
+      "name": "ref"
+    },
+    {
+      "id": 1018,
+      "symbol": "value",
+      "name": "value"
+    },
+    {
+      "id": 1019,
+      "symbol": "imported",
+      "name": "imported"
+    },
+    {
+      "id": 1020,
+      "symbol": "other",
+      "name": "other"
+    },
+    {
+      "id": 1021,
+      "symbol": "field0",
+      "name": "field0"
+    },
+    {
+      "id": 1022,
+      "symbol": "field1",
+      "name": "field1"
+    },
+    {
+      "id": 1023,
+      "symbol": "field2",
+      "name": "field2"
+    },
+    {
+      "id": 1024,
+      "symbol": "field3",
+      "name": "field3"
+    },
+    {
+      "id": 1025,
+      "symbol": "field4",
+      "name": "field4"
+    },
+    {
+      "id": 1026,
+      "symbol": "field5",
+      "name": "field5"
+    },
+    {
+      "id": 1027,
+      "symbol": "field6",
+      "name": "field6"
+    },
+    {
+      "id": 1028,
+      "symbol": "field7",
+      "name": "field7"
+    },
+    {
+      "id": 1029,
+      "symbol": "field8",
+      "name": "field8"
+    },
+    {
+      "id": 1030,
+      "symbol": "field9",
+      "name": "field9"
+    },
+    {
+      "id": 1031,
+      "symbol": "field10",
+      "name": "field10"
+    },
+    {
+      "id": 1032,
+      "symbol": "field11",
+      "name": "field11"
+    },
+    {
+      "id": 1033,
+      "symbol": "field12",
+      "name": "field12"
+    },
+    {
+      "id": 1034,
+      "symbol": "field13",
+      "name": "field13"
+    },
+    {
+      "id": 1035,
+      "symbol": "field14",
+      "name": "field14"
+    },
+    {
+      "id": 1036,
+      "symbol": "field15",
+      "name": "field15"
+    },
+    {
+      "id": 1037,
+      "symbol": "field16",
+      "name": "field16"
+    },
+    {
+      "id": 1038,
+      "symbol": "field17",
+      "name": "field17"
+    },
+    {
+      "id": 1039,
+      "symbol": "field18",
+      "name": "field18"
+    },
+    {
+      "id": 1040,
+      "symbol": "field19",
+      "name": "field19"
+    },
+    {
+      "id": 1041,
+      "symbol": "field20",
+      "name": "field20"
+    },
+    {
+      "id": 1042,
+      "symbol": "field21",
+      "name": "field21"
+    },
+    {
+      "id": 1043,
+      "symbol": "field22",
+      "name": "field22"
+    },
+    {
+      "id": 1044,
+      "symbol": "field23",
+      "name": "field23"
+    },
+    {
+      "id": 1045,
+      "symbol": "field24",
+      "name": "field24"
+    },
+    {
+      "id": 1046,
+      "symbol": "field25",
+      "name": "field25"
+    },
+    {
+      "id": 1047,
+      "symbol": "field26",
+      "name": "field26"
+    },
+    {
+      "id": 1048,
+      "symbol": "field27",
+      "name": "field27"
+    },
+    {
+      "id": 1049,
+      "symbol": "field28",
+      "name": "field28"
+    },
+    {
+      "id": 1050,
+      "symbol": "field29",
+      "name": "field29"
+    },
+    {
+      "id": 1051,
+      "symbol": "field30",
+      "name": "field30"
+    },
+    {
+      "id": 1052,
+      "symbol": "field31",
+      "name": "field31"
+    },
+    {
+      "id": 34,
+      "symbol": "documentText",
+      "name": "document/text"
+    },
+    {
+      "id": 35,
+      "symbol": "documentState",
+      "name": "document/state"
+    },
+    {
+      "id": 36,
+      "symbol": "documentAck",
+      "name": "document/ack"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "commit": "359b89807d638e0f255e012cfe8c64dca33a0c02",
+  "source_sha256": {
+    "LICENSE": "34b2170ddf73b28eed5e27f86106ca15358bde86361a7ac42ac947c49db0b53e",
+    "src/lmdb.h": "788ad72586ddd2fa258934765f06d286d41f8ad3416349c4be7a1fd01060b9fb",
+    "src/mdb.c": "37c804f7ad19976d577dc91456c7a9d9f159990f0a47e78f539fef3ba6fc5d78",
+    "src/mdb_agg_debug.c": "eeb2ab1de33196530e1e3b2e8bfd5c6e78a6293e08735f7e3a008cb1667f289f",
+    "src/mdb_agg_internal.h": "4a60079bad7969b9929d394a6ec6cb8091aa1a15ca53b88270b70cd0542dda88",
+    "src/mdb_agg_maint.c": "6c0d1a12be5a4d6b4d85e0f49e1f15d7468313963ad53cbf6f58080864846623",
+    "src/mdb_agg_query.c": "ad7e433f00d6ba823811dc67f03e425ac8f79c261f8b348415ea2e6f27bce2ea",
+    "src/midl.c": "d3afcbb49885258736b4391d98e6bf511caa1cf73e5b1ac9bba287a0b7d322dc",
+    "src/midl.h": "241def3133085354b0a3186eb6a8ef4e94032e770c8f8b98f99b6615dd0fc1c3"
+  }
+}
