@@ -1,20 +1,24 @@
-#include "sync.h"
+#include "../../littlebear/tests/cache_driver.h"
 #include "test_support.h"
 
-std::string handle(lb_service *server, unsigned op, std::string_view name, bool writable,
+std::string handle(lb_test_cache *server, unsigned op, std::string_view name, bool writable,
                    uint64_t epoch, uint64_t revision, std::string_view payload) {
   lb_buffer out{};
-  require(lb_handle(server, op, lb_name(reinterpret_cast<const uint8_t *>(name.data())), writable,
+  require(lb_test_handle(server, op, lb_name(reinterpret_cast<const uint8_t *>(name.data())), writable,
                     epoch, revision, lb_bytes_make(payload.data(), payload.size()), &out),
           "server request");
   auto packet = text(lb_bytes_make(out.data, out.size));
   lb_buffer_free(&out);
   return packet;
 }
-std::string opening(lb_service *server, std::string_view name) {
+std::string opening(lb_test_cache *server, std::string_view name) {
   lb_buffer out{};
-  require(lb_opening(server, lb_name(reinterpret_cast<const uint8_t *>(name.data())), 0, &out),
-          "server opening");
+  auto *entry = lb_test_cache_entry(server, lb_name(reinterpret_cast<const uint8_t *>(name.data())));
+  bool busy = entry && entry->writing;
+  lb_reply_header(&out, busy ? 1 : entry ? 0 : 3, server->epoch, entry ? entry->revision : 0);
+  if (entry && !busy)
+    require(lb_exchange_begin(lb_index_source(&entry->value), &out), "server opening");
+  require(!out.failed, "server opening allocation");
   auto packet = text(lb_bytes_make(out.data, out.size));
   lb_buffer_free(&out);
   return packet;
@@ -41,7 +45,7 @@ std::optional<std::vector<uint64_t>> apply_delta(df_store *db, std::string_view 
   return changes(reply);
 }
 struct exchange {
-  lb_service &server;
+  lb_test_cache &server;
   uint64_t epoch = 0, revision = 0;
   bool absent = false;
   std::string name = std::string(16, 'a');
@@ -53,7 +57,7 @@ struct exchange {
     revision = lb_read_u64(&r);
     if (op == 0 && status == 3) {
       absent = true;
-      return {};
+      return text(r.data);
     }
     if (op == 0)
       absent = false;
@@ -61,7 +65,7 @@ struct exchange {
       throw std::runtime_error("stale");
     return text(r.data);
   }
-  void reconcile(df_store *db, bool push = false, bool server_starts = false) {
+  void reconcile(df_store *db, bool server_starts = false) {
     std::string packet;
     if (server_starts) {
       auto opening = ::opening(&server, name);
@@ -73,8 +77,9 @@ struct exchange {
       if (packet.size() == 4)
         return;
     } else {
-      request(0, std::string(1, push ? 1 : 0));
-      packet = sync(db, 0);
+      packet = sync(db, 1, request(0, sync(db, 0)));
+      if (packet.size() == 4)
+        return;
     }
     for (unsigned i = 0;; ++i) {
       require(i < 128, "round limit");
@@ -84,7 +89,7 @@ struct exchange {
     }
   }
   void push(df_store *db) {
-    reconcile(db, true);
+    reconcile(db);
     for (;;) {
       auto batch = sync(db, 2);
       lb_reader r{span(batch), false};
@@ -100,7 +105,7 @@ struct exchange {
     return request(2, std::string_view(keys).substr(1));
   }
   auto pull(df_store *db) {
-    reconcile(db, false, true);
+    reconcile(db, true);
     std::vector<uint64_t> changes;
     for (;;) {
       auto keys = sync(db, 3);
@@ -115,8 +120,8 @@ struct exchange {
 int main() {
   directory root;
   auto owner = open_store(root.path + "/owner"), replica = open_store(root.path + "/replica");
-  lb_service server{};
-  require(lb_service_create(&server, (root.path + "/cache").c_str(), 77, 1 << 26).code ==
+  lb_test_cache server{};
+  require(lb_test_cache_create(&server, (root.path + "/cache").c_str(), 77, 1 << 26).code ==
               lb_error_ok,
           "server create");
   exchange x{server};
@@ -235,15 +240,15 @@ int main() {
   lb_u8(&asyncBatch, 1);
   lb_blob(&asyncBatch, span(fact_record(pair_key(9000, 1), "async")));
   lb_task task{};
-  require(lb_task_init(&task, &server, 3, lb_name(reinterpret_cast<const uint8_t *>(x.name.data())),
+  require(lb_test_task_prepare(&task, 3, lb_name(reinterpret_cast<const uint8_t *>(x.name.data())),
                        true, x.epoch, x.revision, lb_bytes_make(asyncBatch.data, asyncBatch.size)),
           "task init");
-  lb_task_step(&task);
-  require(task.io.owner && task.io.state == lb_phase_ready && !(task.phase == lb_task_done),
+  lb_test_task_step(&task, &server);
+  require(task.pending.first.owner && task.pending.first.state == lb_phase_ready && !(task.phase == lb_task_done),
           "async write did not suspend");
   auto busy = ::handle(&server, 0, std::string(16, 'a'), true, 0, 0, std::string(1, 0));
   require(uint8_t(busy[0]) == 1, "concurrent request observed transferring namespace");
-  lb_task_dispose(&task); // cancels a prepared request and releases the namespace guard
+  lb_test_task_dispose(&task, &server); // cancels a prepared request and releases the namespace guard
   x.pull(replica);
   require(export_records(owner) == export_records(replica), "cancelled async write published");
   // A subscriber pins one file read, not its whole namespace. An owner can
@@ -253,19 +258,19 @@ int main() {
   lb_u32(&fetchOne, 1);
   lb_u64(&fetchOne, export_records(owner).begin()->first);
   lb_task reading{};
-  require(lb_task_init(&reading, &server, 2,
+  require(lb_test_task_prepare(&reading, 2,
                        lb_name(reinterpret_cast<const uint8_t *>(x.name.data())), false, x.epoch,
                        x.revision, lb_bytes_make(fetchOne.data, fetchOne.size)),
           "task init");
-  lb_task_step(&reading);
-  require(reading.io.owner && reading.io.state == lb_phase_ready, "fetch did not suspend");
+  lb_test_task_step(&reading, &server);
+  require(reading.pending.first.owner && reading.pending.first.state == lb_phase_ready, "fetch did not suspend");
   lb_store_io_operation readIO{};
-  require(lb_store_start_io(&reading.io, &readIO).code == lb_error_ok, "start pinned read");
+  require(lb_store_start_io(&reading.pending.first, &readIO).code == lb_error_ok, "start pinned read");
   auto readBytes = pread(readIO.fd, readIO.buffer, readIO.length, readIO.offset);
   edit_store(owner, {{9001, DF_ATTR_TITLE, "owner continues during subscriber fetch"}}, {});
   x.push(owner);
-  lb_store_complete_io(&reading.io, readBytes < 0 ? -errno : int(readBytes));
-  lb_task_step(&reading);
+  lb_store_complete_io(&reading.pending.first, readBytes < 0 ? -errno : int(readBytes));
+  lb_test_task_step(&reading, &server);
   require((reading.phase == lb_task_done), "stale read did not finish");
   auto restart = text(lb_bytes_make(reading.reply.data, reading.reply.size));
   lb_reader restartReader{span(restart), false};
@@ -273,16 +278,16 @@ int main() {
   lb_read_u64(&restartReader);
   lb_read_u64(&restartReader);
   require(text(restartReader.data).starts_with("LBR\3"), "restart omitted new opening");
-  lb_task_dispose(&reading);
+  lb_test_task_dispose(&reading, &server);
   x.pull(replica);
   require(export_records(owner) == export_records(replica), "subscriber restart convergence");
   // Complete a write through short kernel-style completions, then read it.
-  require(lb_task_init(&task, &server, 3, lb_name(reinterpret_cast<const uint8_t *>(x.name.data())),
+  require(lb_test_task_prepare(&task, 3, lb_name(reinterpret_cast<const uint8_t *>(x.name.data())),
                        true, x.epoch, x.revision, lb_bytes_make(asyncBatch.data, asyncBatch.size)),
           "task init");
-  lb_task_step(&task);
+  lb_test_task_step(&task, &server);
   while (!(task.phase == lb_task_done)) {
-    auto *pending = &task.io;
+    auto *pending = &task.pending.first;
     require(pending != nullptr, "missing pending request");
     while (pending->state == lb_phase_ready) {
       lb_store_io_operation operation{};
@@ -291,10 +296,10 @@ int main() {
                       operation.offset);
       lb_store_complete_io(pending, n < 0 ? -errno : int(n));
     }
-    lb_task_step(&task);
+    lb_test_task_step(&task, &server);
   }
   require(task.reply.data[0] == 0, "async completion failed");
-  lb_task_dispose(&task);
+  lb_test_task_dispose(&task, &server);
   x.push(owner); // removes the test-only record before the large transfer
   // Transfer larger than a wire frame: pages must publish exactly once.
   std::vector<fact> large;
@@ -387,7 +392,7 @@ int main() {
   lb_buffer_free(&bad);
   lb_buffer_free(&asyncBatch);
   lb_buffer_free(&fetchOne);
-  lb_service_destroy(&server);
+  lb_test_cache_destroy(&server);
   close_store(owner);
   close_store(replica);
   close_store(emptyOwner);

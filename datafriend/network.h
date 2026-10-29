@@ -31,7 +31,7 @@ DF_API uint32_t df_network_subscribe(void *, void *store, const char *public_key
 /* Native subscription: reads the public key from the store namespace. Query
  * watches publish automatically; no forwarding callback is needed. */
 DF_API uint32_t df_network_follow(df_network *, df_store *, df_buffer *error);
-/* Preserves other channels and their IDs. May queue unsubscribe behind in-flight
+/* Preserves other channels and their IDs. May queue channel close behind in-flight
  * traffic. On success the detached store/identity may be closed immediately.
  * Fails without detaching if queue allocation fails. Not callable inside pump. */
 DF_API df_status df_network_detach(df_network *, uint32_t channel, df_buffer *error);

@@ -38,7 +38,7 @@ def blob(value):
     return struct.pack('!I', len(value)) + value
 
 
-def body(schema, name, operation=0, payload=b'\0', epoch=0, revision=0, magic=b'LBS\5', channel=1, request_id=1):
+def body(schema, name, operation=0, payload=b'LBR\3\1\0\0', epoch=0, revision=0, magic=b'LBS\5', channel=1, request_id=1):
     return magic + struct.pack('!II', request_id, channel) + bytes([operation]) + blob(name) + blob(schema.encode()) + struct.pack('!QQ', epoch, revision) + blob(payload)
 
 
@@ -128,21 +128,23 @@ def run(binary, schema):
                 assert exchange(many, body(schema, other_missing, channel=channels[-1]))[0] == 2
                 assert exchange(many, body(schema, missing, channel=0))[0] == 2
             with connect(port) as peer:
-                read = body(schema, alice.public)
-                status, epoch, revision, _, no_challenge = exchange(peer, read)
+                read = body(schema, alice.public, 8, b'\1')
+                with connect(port) as observer:
+                    status, epoch, revision, _, no_challenge = exchange(observer, read)
                 assert status == 3 and revision == 0 and not no_challenge, 'missing namespace became present'
                 def inspect():
                     with connect(port) as observer:
                         return exchange(observer, read)
-                # Public push intent cannot create a namespace or allocate owner state.
-                frame = blob(body(schema, alice.public, payload=b'\1'))
+                # Beginning owner sync compares against an empty set but cannot create storage.
+                frame = blob(body(schema, alice.public, payload=b'LBR\3\1\0\0'))
                 peer.sendall(frame[:3])
                 time.sleep(.01)
-                peer.sendall(frame[3:] + blob(read))
+                peer.sendall(frame[3:] + blob(body(schema, alice.public)))
                 missing_push = response(peer)
                 assert missing_push[0] == 3 and len(missing_push[4]) == 32
-                missing_pull = response(peer)
-                assert missing_pull[0] == 3 and not missing_pull[4]
+                restarted_owner = response(peer)
+                assert restarted_owner[0] == 3 and len(restarted_owner[4]) == 32
+                assert restarted_owner[3] == b'LBR\3\2\0\0'
                 assert exchange(peer, body(schema, alice.public, magic=b'LBS\3'))[0] == 2
                 assert exchange(peer, body('wrong-schema', alice.public))[0] == 2
                 assert exchange(peer, body(schema, b'alice'))[0] == 2
@@ -151,12 +153,14 @@ def run(binary, schema):
                 assert exchange(peer, mutation(schema, alice, unsigned_challenge, 0, epoch, revision))[0] == 2
                 # Operation 6 is a signed delta, never an unsigned challenge request.
                 assert exchange(peer, body(schema, alice.public, 6, b'', epoch, revision))[0] == 2
-                status, _, _, _, challenge = exchange(peer, body(schema, alice.public, payload=b'\1'))
+                status, _, _, _, challenge = exchange(peer, body(schema, alice.public, payload=b'LBR\3\1\0\0'))
                 assert status == 3 and len(challenge) == 32
                 # Asking for a challenge itself must not create the namespace.
                 assert inspect()[0] == 3
                 bad_owner = mutation(schema, bob, challenge, 0, epoch, revision, name=alice.public)
                 assert exchange(peer, bad_owner)[0] == 2, 'wrong owner accepted'
+                for invalid in (b'', b'\0', b'\1', b'LBR\3\1', b'LBR\3\1\0\0trailing'):
+                    assert exchange(peer, body(schema, alice.public, 0, invalid))[0] == 2
                 create = mutation(schema, alice, challenge, 0, epoch, revision)
                 # Every truncation and a corrupted signature are rejected.
                 for size in range(13, len(create)):
@@ -189,15 +193,15 @@ def run(binary, schema):
                 assert exchange(peer, stale)[0] == 1
                 assert exchange(peer, stale)[0] == 2, 'stale attempt was not consumed'
                 replay = mutation(schema, alice, challenge, 3, epoch, revision, deletion)
-                # Existing namespaces defer the nonce to a differing reconciliation
-                # reply. Equal empty offers preserve the initial-message optimization.
-                start_push = exchange(peer, body(schema, alice.public, payload=b'\1'))
-                assert start_push[0] == 0 and not start_push[4]
+                # Op0 performs the first comparison itself. Equal existing states
+                # need no challenge; a differing opening includes one immediately.
+                start_push = exchange(peer, body(schema, alice.public, payload=b'LBR\3\1\0\0'))
+                assert start_push[0] == 0 and start_push[3] == b'LBR\3\2\0\0' and not start_push[4]
                 empty_offer = b'LBR\3\1\0\0'
                 equal = exchange(peer, body(schema, alice.public, 1, empty_offer, epoch, revision))
                 assert equal[0] == 0 and equal[3] == b'LBR\3\2\0\0' and not equal[4]
                 offer = b'LBR\3\1\0\1' + struct.pack('!QQ', 42, 1)
-                different = exchange(peer, body(schema, alice.public, 1, offer, epoch, revision))
+                different = exchange(peer, body(schema, alice.public, 0, offer))
                 assert different[0] == 0 and different[3] == b'LBR\3\2\0\0'
                 new_challenge = different[4]
                 assert len(new_challenge) == 32
@@ -210,16 +214,16 @@ def run(binary, schema):
                 fresh = mutation(schema, alice, new_challenge, 0, epoch, revision, deletion)
                 assert exchange(peer, fresh)[0] == 0
                 # Signing bob's namespace with bob's key cannot change alice's namespace.
-                bob_challenge = exchange(peer, body(schema, bob.public, payload=b'\1', channel=2))[4]
+                bob_challenge = exchange(peer, body(schema, bob.public, payload=b'LBR\3\1\0\0', channel=2))[4]
                 assert exchange(peer, mutation(schema, bob, bob_challenge, 0, epoch, 0, channel=2))[0] == 0
                 assert inspect()[2] == 3
                 # Two namespaces share one persistent subscriber connection.
                 with connect(port) as subscriber:
-                    subscriber.sendall(blob(body(schema, alice.public, 4, b'', channel=11, request_id=101)))
+                    subscriber.sendall(blob(body(schema, alice.public, 8, b'\0', channel=11, request_id=101)))
                     opening = response(subscriber, True)
                     assert opening[:3] == (101, 11, 0) and opening[5].startswith(b'LBR\3')
                     old_revision = opening[4]
-                    subscriber.sendall(blob(body(schema, bob.public, 4, b'', channel=12, request_id=102)))
+                    subscriber.sendall(blob(body(schema, bob.public, 8, b'\0', channel=12, request_id=102)))
                     assert response(subscriber, True)[:3] == (102, 12, 0)
                     # Subscriber sends nothing: the owner update must itself wake it.
                     assert exchange(peer, mutation(schema, alice, new_challenge, 1, epoch, 3, deletion))[0] == 0
@@ -234,17 +238,17 @@ def run(binary, schema):
                     assert response(subscriber, True)[:3] == (104, 11, 0)
                     assert exchange(peer, mutation(schema, alice, new_challenge, 2, epoch, 4, deletion))[0] == 0
                     # Unsubscribed alice cannot generate an event; bob remains live.
-                    subscriber.sendall(blob(body(schema, bob.public, 0, b'\0', channel=12, request_id=105)))
-                    assert response(subscriber, True)[:3] == (105, 12, 0)
+                    subscriber.sendall(blob(body(schema, b'', 7, b'', channel=0, request_id=105)))
+                    assert response(subscriber, True)[:3] == (105, 0, 0)
 
             # Optimistic updates reuse the connection challenge, authenticate the
             # target fingerprint, and forward records without a subscriber fetch.
             fast_owner = Signer(9)
             with connect(port) as subscriber, connect(port) as owner:
-                opening = exchange(owner, body(schema, fast_owner.public, payload=b'\1'))
+                opening = exchange(owner, body(schema, fast_owner.public, payload=b'LBR\3\1\0\0'))
                 epoch, challenge = opening[1], opening[4]
                 assert exchange(owner, mutation(schema, fast_owner, challenge, 0, epoch, 0))[0] == 0
-                subscribed = exchange(subscriber, body(schema, fast_owner.public, 8, b''))
+                subscribed = exchange(subscriber, body(schema, fast_owner.public, 8, b'\1'))
                 assert subscribed[0] == 0
                 # Deleting a nonexistent record leaves the empty fingerprint at zero.
                 delta = struct.pack('!QIQB', 0, 1, 42, 0)
@@ -277,12 +281,35 @@ def run(binary, schema):
                 mismatch = response(owner, True)
                 assert mismatch[:3] == (0, 1, 6) and not mismatch[5], 'missing recovery event'
                 assert response(owner, True)[:3] == (700, 0, 0), 'duplicate recovery event'
-                started = exchange(owner, body(schema, fast_owner.public, payload=b'\1'))
                 offer = b'LBR\3\1\0\1' + struct.pack('!QQ', 42, 1)
-                opening = exchange(owner, body(schema, fast_owner.public, 1, offer, started[1], started[2]))
+                opening = exchange(owner, body(schema, fast_owner.public, 0, offer))
                 assert opening[4], 'missing replacement challenge'
-                owner.sendall(blob(mutation(schema, fast_owner, opening[4], 0, started[1], started[2], delta, operation=6)) + blob(heartbeat))
+                owner.sendall(blob(mutation(schema, fast_owner, opening[4], 0, opening[1], opening[2], delta, operation=6)) + blob(heartbeat))
                 assert response(owner, True)[:3] == (700, 0, 0), 'recovery did not resume silent writes'
+
+            # One subscription operation owns both delivery modes. Invalid requests
+            # preserve the current mode; switching modes takes effect immediately.
+            mode_owner = Signer(10)
+            with connect(port) as owner, connect(port) as subscriber:
+                opened = exchange(owner, body(schema, mode_owner.public))
+                epoch, challenge = opened[1], opened[4]
+                assert exchange(owner, mutation(schema, mode_owner, challenge, 0, epoch, 0))[0] == 0
+                assert exchange(subscriber, body(schema, mode_owner.public, 8, b'\1'))[0] == 0
+                for retired in (4, 9, 255):
+                    assert exchange(subscriber, body(schema, mode_owner.public, retired, b''))[0] == 2
+                for invalid in (b'', b'\2', b'\0\1', b'\xff'):
+                    assert exchange(subscriber, body(schema, mode_owner.public, 8, invalid))[0] == 2
+                delta = struct.pack('!QIQB', 0, 1, 42, 0)
+                for sequence, mode in enumerate((1, 0, 1), 1):
+                    if sequence > 1:
+                        assert exchange(subscriber, body(schema, mode_owner.public, 8, bytes([mode])))[0] == 0
+                    owner.sendall(blob(mutation(schema, mode_owner, challenge, sequence, epoch, 0, delta, operation=6)))
+                    event = response(subscriber, True)
+                    assert event[:3] == (0, 1, 5 if mode else 4), (sequence, mode, event)
+                    assert event[5] == delta if mode else event[5].startswith(b'LBR\3')
+                # Closing an owner channel releases authorization as well as subscriptions.
+                assert exchange(owner, body(schema, mode_owner.public, 5, b''))[0] == 0
+                assert exchange(owner, mutation(schema, mode_owner, challenge, 4, epoch, 0, delta, operation=6))[0] == 2
 
             with connect(port) as peer:
                 peer.sendall(struct.pack('!I', 8 * 1024 * 1024 + 1))
@@ -323,11 +350,11 @@ def main():
         'wrong owner', 'unsigned write denial', 'full request tampering', 'truncation',
         'sequence and connection replay', 'challenge rotation', 'restart replay', 'stale write consumption',
         'server-initiated subscription', 'multiplexed namespaces', 'stale fetch with opening',
-        'unsubscribe', '160 dynamic channels with sparse IDs and slot reuse',
+        'close channel releases authorization', 'subscription mode changes', 'retired operation rejection', '160 dynamic channels with sparse IDs and slot reuse',
         'namespace isolation', 'piggybacked absent/reconciliation challenges',
         'signed optimistic updates', 'optimistic replay/tamper rejection', 'immediate subscriber forwarding before owner slot',
         'silent uploads and pipelined mismatch recovery', 'optimistic stale revision with matching fingerprint',
-        'no standalone challenge operation', 'equal offer without challenge', 'fragmented/coalesced frames', 'size/schema rejection',
+        'owner opening includes first reconciliation round', 'invalid opening preserves challenge', 'no standalone challenge operation', 'equal offer without challenge', 'fragmented/coalesced frames', 'size/schema rejection',
         'disconnect/slot reuse', 'shutdown with pending receives/accept']}))
 
 

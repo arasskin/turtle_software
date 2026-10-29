@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")"
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j 2
+build/janet tests/room.janet
+build/janet tests/transport.janet
+node --test tests/model.test.mjs
+node --check public/app.mjs
+build/janet tests/store.janet
+python3 tests/integration.py
+if [ "${1:-}" = "--external" ]; then
+  python3 tests/external_sync.py
+fi

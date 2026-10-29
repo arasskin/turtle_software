@@ -64,7 +64,7 @@ def run(binary, schema, count):
 
             owner = peers.enter_context(connect(port))
             signer = Signer(41)
-            opening = exchange(owner, body(schema, signer.public, payload=b'\1'))
+            opening = exchange(owner, body(schema, signer.public, payload=b'LBR\3\1\0\0'))
             epoch, challenge = opening[1], opening[4]
             subscribers = idle[:129]
             # Register while absent, then move channel entries through growth
@@ -72,7 +72,7 @@ def run(binary, schema, count):
             for peer in subscribers:
                 for channel in (1, 2, 3, 4, 5, 6, 7, 8, 9):
                     assert exchange(peer, body(schema, bytes([channel]) * 32, channel=channel))[0] == 3
-                assert exchange(peer, body(schema, signer.public, 8, b'', channel=99))[0] == 3
+                assert exchange(peer, body(schema, signer.public, 8, b'\1', channel=99))[0] == 3
                 assert exchange(peer, body(schema, bytes([1]) * 32, 5, b'', channel=1))[0] == 0
             assert exchange(owner, mutation(schema, signer, challenge, 0, epoch, 0))[0] == 0
             for peer in subscribers:

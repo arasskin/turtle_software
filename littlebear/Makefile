@@ -10,10 +10,10 @@ SANITIZERS = -fsanitize=address,undefined -fno-omit-frame-pointer
 # Compiler-generated dependencies rebuild only affected targets, including shared headers.
 DEPFLAGS = -MMD -MP
 TEST_NAMES := size_class_test wide_tree_test hash_table_test storage_test reconciliation_test index_sync_test
-TESTS := $(addprefix $(BUILD)/tests/,$(TEST_NAMES)) $(BUILD)/tests/c99_test $(BUILD)/tests/connections_test $(BUILD)/tests/delivery_test $(BUILD)/tests/batch_write_test
-SANITIZER_TESTS := $(addprefix $(BUILD)/sanitize/,$(TEST_NAMES)) $(BUILD)/sanitize/c99_test $(BUILD)/sanitize/connections_test $(BUILD)/sanitize/delivery_test $(BUILD)/sanitize/batch_write_test
+TESTS := $(addprefix $(BUILD)/tests/,$(TEST_NAMES)) $(BUILD)/tests/c99_test $(BUILD)/tests/connections_test $(BUILD)/tests/delivery_test $(BUILD)/tests/batch_write_test $(BUILD)/tests/websocket_test
+SANITIZER_TESTS := $(addprefix $(BUILD)/sanitize/,$(TEST_NAMES)) $(BUILD)/sanitize/c99_test $(BUILD)/sanitize/connections_test $(BUILD)/sanitize/delivery_test $(BUILD)/sanitize/batch_write_test $(BUILD)/sanitize/websocket_test
 
-.PHONY: all server debug test sanitize clean
+.PHONY: all server debug test sanitize architecture clean
 all: server
 server: $(BUILD)/server
 $(BUILD)/server: server.c Makefile
@@ -25,10 +25,10 @@ $(BUILD)/server-debug: server.c Makefile
 	@mkdir -p $(@D) $(BUILD)/deps
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -MF $(BUILD)/deps/$(@F).d -O1 -g $(SANITIZERS) -o $@ $< $(LDFLAGS) -luring -lsodium
 
-$(BUILD)/tests/c99_test $(BUILD)/tests/batch_write_test: $(BUILD)/tests/%: tests/%.c
+$(BUILD)/tests/c99_test $(BUILD)/tests/batch_write_test $(BUILD)/tests/websocket_test: $(BUILD)/tests/%: tests/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -O2 -g -o $@ $< $(LDFLAGS)
-$(BUILD)/sanitize/c99_test $(BUILD)/sanitize/batch_write_test: $(BUILD)/sanitize/%: tests/%.c
+$(BUILD)/sanitize/c99_test $(BUILD)/sanitize/batch_write_test $(BUILD)/sanitize/websocket_test: $(BUILD)/sanitize/%: tests/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -O1 -g $(SANITIZERS) -o $@ $< $(LDFLAGS)
 
@@ -49,13 +49,16 @@ ifeq ($(shell uname -s),Linux)
 $(BUILD)/tests/storage_test $(BUILD)/sanitize/storage_test: TEST_LIBS = -luring
 endif
 
-test: $(TESTS)
+architecture:
+	python3 ../scripts/check_littlebear_dependencies.py
+
+test: architecture $(TESTS)
 	@set -e; for test in $(TESTS); do "$$test"; done
-sanitize: $(SANITIZER_TESTS)
+sanitize: architecture $(SANITIZER_TESTS)
 	@set -e; for test in $(SANITIZER_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" UBSAN_OPTIONS=halt_on_error=1 "$$test"; done
 
 clean:
 	rm -rf $(BUILD)
 # Keep server depfiles separate from pre-flattening build metadata, whose
 # removed src/server.c prerequisite would otherwise block incremental builds.
--include $(wildcard $(BUILD)/deps/*.d $(BUILD)/tests/*.d $(BUILD)/sanitize/*.d)
+-include $(wildcard $(BUILD)/deps/server.d $(BUILD)/deps/server-debug.d $(BUILD)/tests/*.d $(BUILD)/sanitize/*.d)

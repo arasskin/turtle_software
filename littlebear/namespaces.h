@@ -1,7 +1,6 @@
 #ifndef LB_NAMESPACES_H
 #define LB_NAMESPACES_H
 #include "index.h"
-#include "codec.h"
 typedef XXH128_hash_t lb_namespace;
 /* Dense entries with 32-bit linear-probing indices. Deletion backshifts the
  * index and moves the last value. Headers must be looked up after mutation. */
@@ -36,11 +35,11 @@ static inline size_t lb_directory_slot(const lb_directory *t, lb_namespace k) {
   }
   return i;
 }
-static inline lb_index *lb_directory_get(lb_directory *t, lb_namespace k) {
+static inline lb_index *lb_directory_get(const lb_directory *t, lb_namespace k) {
   size_t i = lb_directory_slot(t, k);
   return i == SIZE_MAX || !t->slots[i] ? NULL : &t->entries[t->slots[i] - 1].value;
 }
-static inline lb_namespace_entry *lb_directory_entry(lb_directory *t, lb_namespace k) {
+static inline lb_namespace_entry *lb_directory_entry(const lb_directory *t, lb_namespace k) {
   size_t i = lb_directory_slot(t, k);
   return i == SIZE_MAX || !t->slots[i] ? NULL : &t->entries[t->slots[i] - 1];
 }
@@ -149,5 +148,22 @@ static inline bool lb_directory_erase(lb_directory *t, lb_namespace k) {
     t->entries[index] = last;
   }
   return true;
+}
+static inline lb_namespace lb_name(const uint8_t name[16]) {
+  lb_namespace ns;
+  memcpy(&ns, name, 16);
+  return ns;
+}
+static inline uint64_t lb_namespace_revision(const lb_directory *namespaces, lb_namespace ns) {
+  const lb_namespace_entry *e = lb_directory_entry(namespaces, ns);
+  return e ? e->revision : 0;
+}
+static inline bool lb_namespace_writing(const lb_directory *namespaces, lb_namespace ns) {
+  const lb_namespace_entry *e = lb_directory_entry(namespaces, ns);
+  return e && e->writing;
+}
+static inline uint64_t lb_namespace_fingerprint(const lb_directory *namespaces, lb_namespace ns) {
+  const lb_namespace_entry *e = lb_directory_entry(namespaces, ns);
+  return e ? ct_node_hash(e->value.root) : 0;
 }
 #endif

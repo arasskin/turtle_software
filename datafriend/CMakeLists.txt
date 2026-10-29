@@ -77,4 +77,7 @@ if(DATAFRIEND_TESTS AND NOT ANDROID AND NOT IOS)
     target_compile_definitions(${name} PRIVATE MDB_HASH_SIZE=8)
     add_test(NAME ${name} COMMAND ${name})
   endforeach()
+  # The in-process network fixture includes Littlebear's inline authorization tools.
+  find_path(LITTLEBEAR_SODIUM_INCLUDE_DIR sodium.h REQUIRED)
+  target_include_directories(network_test SYSTEM PRIVATE ${LITTLEBEAR_SODIUM_INCLUDE_DIR})
 endif()

@@ -1,6 +1,6 @@
 #ifndef LB_EXCHANGE_H
 #define LB_EXCHANGE_H
-#include "protocol.h"
+#include "codec.h"
 #include "reconcile.h"
 static inline bool lb_exchange_begin(lb_recon_source source, lb_buffer *reply) {
   lb_recon_workspace work;

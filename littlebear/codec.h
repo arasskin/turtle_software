@@ -1,28 +1,10 @@
 #ifndef LB_CODEC_H
 #define LB_CODEC_H
-#include "base.h"
-#include "../containers/buffer.h"
-enum {
-  LB_MAX_FRAME = 8 * 1024 * 1024,
-  LB_MAX_PACKET = LB_MAX_FRAME - 2048,
-  LB_MAX_RECORDS = 1000000
-};
-typedef struct lb_bytes {
-  const uint8_t *data;
-  size_t size;
-} lb_bytes;
-typedef ct_buffer lb_buffer;
+#include "models.h"
 typedef struct lb_reader {
   lb_bytes data;
   bool failed;
 } lb_reader;
-static inline lb_bytes lb_bytes_make(const void *p, size_t n) {
-  lb_bytes b = {(const uint8_t *)p, n};
-  return b;
-}
-static inline lb_bytes lb_buffer_bytes(const lb_buffer *b) {
-  return lb_bytes_make(b->data, b->size);
-}
 static inline void lb_buffer_free(lb_buffer *b) { ct_buffer_free(b); }
 static inline void lb_buffer_clear(lb_buffer *b) { ct_buffer_clear(b); }
 static inline bool lb_buffer_reserve(lb_buffer *b, size_t n) {
@@ -93,11 +75,19 @@ static inline lb_bytes lb_read_blob(lb_reader *r) {
 static inline bool lb_reader_end(lb_reader *r) {
   return !r->failed && r->data.size == 0;
 }
-static inline bool lb_bytes_equal(lb_bytes a, lb_bytes b) {
-  return a.size == b.size && (!a.size || memcmp(a.data, b.data, a.size) == 0);
-}
 static inline uint64_t lb_integer(lb_bytes b) {
   lb_reader r = {b, false};
   return lb_read_u64(&r);
+}
+static inline void lb_reply_header(lb_buffer *out, uint8_t status, uint64_t epoch,
+                                   uint64_t revision) {
+  lb_buffer_clear(out);
+  lb_u8(out, status);
+  lb_u64(out, epoch);
+  lb_u64(out, revision);
+}
+static inline void lb_reply_rejected(lb_buffer *out) {
+  lb_reply_header(out, lb_status_rejected, 0, 0);
+  lb_blob(out, lb_bytes_make("request rejected", 16));
 }
 #endif

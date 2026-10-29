@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ef">
+  <title>Common ground · A shared drawing canvas</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.mjs"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M9 29 18 9l6 15 7-11"/><circle cx="31" cy="30" r="3"/></svg>
+      <div><h1>Common ground<span class="edition">01</span></h1><p>A little space to draw together.</p></div>
+    </div>
+    <div class="header-actions">
+      <div class="connection" id="connection" role="status"><span class="status-dot"></span><span id="status">Connecting…</span></div>
+      <button class="invite" id="invite"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 13 4-4m-6 6-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 2 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(1 1)"/></svg>Invite someone</button>
+    </div>
+  </header>
+  <main>
+    <div class="board-heading"><div><span class="live-indicator"></span>THE SHARED CANVAS</div><div class="people"><div id="avatars" class="avatars"></div><span id="people-count">Just you, for now</span></div></div>
+    <section class="workspace" aria-label="Shared drawing canvas">
+      <div class="paper" id="paper">
+        <canvas id="canvas" width="1600" height="1000" aria-label="Draw with a mouse, pen, or touch. Everyone’s strokes share this canvas."></canvas>
+        <div id="cursors" aria-hidden="true"></div>
+        <div class="empty" id="empty"><div class="empty-doodle">✳</div><h2>Good things start<br>with a little scribble.</h2><p>Pick a color. Make a mark. Invite a friend.<br>There’s room for all of it.</p><span>ONE CANVAS. EVERYONE’S IDEAS.</span></div>
+        <div class="paper-corner">COMMON GROUND / 1600 × 1000</div>
+      </div>
+    </section>
+    <div class="tools" role="toolbar" aria-label="Drawing tools">
+      <div class="pen-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 16-1 5 5-1L21 7l-4-4L4 16Zm10-10 4 4M4 16l4 4"/></svg></div>
+      <div class="palette" id="palette" role="group" aria-label="Ink color"></div>
+      <div class="divider"></div>
+      <label class="size-control"><span class="size-dot" id="size-dot"></span><input type="range" id="size" min="2" max="20" value="5" aria-label="Brush size"><output id="size-label">5</output></label>
+      <div class="divider"></div>
+      <button class="tool-button" id="undo" title="Undo your last stroke (Ctrl or Command + Z)" aria-label="Undo my last stroke"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5-5 5 5 5M3 10h11a6 6 0 0 1 0 12"/></svg><span>Undo mine</span></button>
+      <button class="tool-button" id="export" title="Download the canvas as a PNG"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span>PNG</span></button>
+    </div>
+    <footer><label class="name-label"><span class="you-dot" id="you-dot"></span>Drawing as <input id="name" aria-label="Your display name" maxlength="24" spellcheck="false" value=""></label><span class="footer-note">Different hands. Same page.</span><span id="save-status" aria-live="polite">Your canvas stays here.</span></footer>
+  </main>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="join-dialog"><form method="dialog"><span class="dialog-eyebrow">A SHARED LITTLE SPACE</span><h2>You’re almost here.</h2><p>Open the full invite link printed by the local host, or paste its invite key below.</p><label>Invite key<input id="join-key" autocomplete="off" required pattern="[a-f0-9]{64}" placeholder="Paste the 64-character key"></label><button class="invite" id="join-submit">Join the canvas →</button></form></dialog>
+  <dialog id="share-dialog"><form method="dialog"><span class="dialog-eyebrow">MAKE ROOM FOR A FRIEND</span><h2>Better together.</h2><p>Send this link to someone who can reach this host. On another device, replace 127.0.0.1 or localhost with the host computer’s LAN address.</p><label>Invite link<input id="share-url" readonly></label><button class="invite">Done</button></form></dialog>
+</body>
+</html>

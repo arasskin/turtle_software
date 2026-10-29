@@ -1,0 +1,9 @@
+Common ground starts with [one command][run], which builds the bundled Janet runtime and a native Datafriend adapter before launching the local host.
+
+The [browser UI][public/app.mjs] turns drawing, cursor movement, and presence into record edits. Its [projection][public/model.mjs] renders immediately and retains pending stroke versions across temporary disconnections.
+
+The [Janet host][server.janet] receives record edits over WebSockets. The [room rules][room.janet] validate native writer ownership, preserve stroke order, and reject stale versions. Separate stroke IDs let marks overlap without replacing each other.
+
+The [native adapter][store.c] updates one Datafriend entity per record through [the native C API][../../datafriend/db.h]. Cursors and unfinished strokes use the same commit path as finished drawings. The [sync session][sync.janet] uses [native networking][../../datafriend/network.h] to push its owner namespace and follow peer namespaces through external Littlebear. Native query watches publish received records to browsers.
+
+The [record tests][tests/room.janet], [browser model tests][tests/model.test.mjs], [native persistence test][tests/store.janet], and [external integration test][tests/external_sync.py] exercise independent native databases, overlapping drawings, cursor records, offline edits, restart, and convergence through the deployed server. Its [deployment guide][../../deploy/README.md] records the build, checksums, and rollback procedure.

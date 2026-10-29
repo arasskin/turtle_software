@@ -30,11 +30,11 @@ def run(binary, schema, shutdown=False):
             abrupt = sockets.enter_context(connect(port))
             for peer in (slow, abrupt):
                 peer.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536)
-            opening = exchange(writer, body(schema, owner.public, payload=b'\1'))
+            opening = exchange(writer, body(schema, owner.public, payload=b'LBR\3\1\0\0'))
             assert opening[0] == 3 and len(opening[4]) == 32
             epoch, challenge = opening[1], opening[4]
             for peer in (fast, slow, abrupt):
-                assert exchange(peer, body(schema, owner.public, 8, b''))[0] == 3
+                assert exchange(peer, body(schema, owner.public, 8, b'\1'))[0] == 3
 
             def send_update(sequence):
                 text = struct.pack('!Q', sequence) + b'x' * (60000 - 8)

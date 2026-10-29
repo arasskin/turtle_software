@@ -53,8 +53,8 @@ static inline bool ct_map_reserve(ct_map *m, size_t n) {
   }
   if (cap > SIZE_MAX / sizeof(ct_pair) || buckets > SIZE_MAX / sizeof(uint32_t))
     return false;
-  ct_pair *items = malloc(cap * sizeof(*items));
-  uint32_t *slots = calloc(buckets, sizeof(*slots));
+  ct_pair *items = (ct_pair *)malloc(cap * sizeof(*items));
+  uint32_t *slots = (uint32_t *)calloc(buckets, sizeof(*slots));
   if (!items || !slots) {
     free(items);
     free(slots);

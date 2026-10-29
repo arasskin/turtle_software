@@ -441,7 +441,7 @@ static bool receive(network *n, df_bytes packet) {
     return error(n, "Littlebear rejected request");
   if (r.challenge.size) {
     if (!c->signer || c->challenged ||
-        !((c->state == START && r.status == 3) || c->state == RECONCILE))
+        !(c->state == START || c->state == RECONCILE))
       return error(n, "unexpected write challenge");
     memcpy(c->challenge, r.challenge.data, 32);
     c->challenged = true;
@@ -451,8 +451,7 @@ static bool receive(network *n, df_bytes packet) {
   switch (c->state) {
   case START:
     c->absent = r.status == 3;
-    c->snapshot = c->store->revision;
-    return native_round(n, r.channel, c, 0, df_span(NULL, 0));
+    return native_round(n, r.channel, c, 1, r.payload);
   case RECONCILE:
     return native_round(n, r.channel, c, 1, r.payload);
   case APPLY:
@@ -638,14 +637,19 @@ static bool pump(network *n, uint64_t budget) {
       c->rounds = 0;
       c->started = now;
       c->state = START;
-      uint8_t owner = 1;
-      if (!send_request(n, id, c, 0, df_span(&owner, 1), NULL))
+      c->snapshot = c->store->revision;
+      df_writer offer = {0};
+      bool ok = native(n, c, 0, df_span(NULL, 0), &offer) &&
+                send_request(n, id, c, 0, df_written(&offer), NULL);
+      df_writer_free(&offer);
+      if (!ok)
         return false;
     } else if (!c->signer && !c->subscribed) {
       c->epoch = c->revision = 0;
       c->started = now;
       c->state = SUBSCRIBE;
-      if (!send_request(n, id, c, 8, df_span(NULL, 0), NULL))
+      uint8_t delivery_mode = 1; /* Record batches with reconciliation fallback. */
+      if (!send_request(n, id, c, 8, df_span(&delivery_mode, 1), NULL))
         return false;
     }
   }

@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE
-#include "sync.h"
+#include "cache_driver.h"
 #include <stdio.h>
 #define CHECK(x)                                                                                   \
   do {                                                                                             \
@@ -85,62 +85,62 @@ static lb_buffer batch(uint64_t id, const char *value) {
 static void sync_lifetime(void) {
   char path[] = "/tmp/littlebear-c99-XXXXXX";
   int fd = mkstemp(path);
-  lb_service service = {0};
+  lb_test_cache service = {0};
   lb_namespace ns = {1, 2};
   lb_task task;
   lb_buffer payload = batch(17, "first"), reply = {0}, fetch = {0};
   uint64_t first_revision;
   CHECK(fd >= 0);
   close(fd);
-  CHECK(lb_service_create(&service, path, 77, 1 << 20).code == lb_error_ok);
-  CHECK(lb_handle(&service, 0, ns, false, 0, 0, lb_bytes_make("\0", 1), &reply));
+  CHECK(lb_test_cache_create(&service, path, 77, 1 << 20).code == lb_error_ok);
+  CHECK(lb_test_handle(&service, 0, ns, false, 0, 0, lb_bytes_make("LBR\3\1\0\0", 7), &reply));
   CHECK(reply.data[0] == 3);
   lb_buffer_free(&reply);
-  CHECK(lb_task_init(&task, &service, 3, ns, true, 77, 0, lb_buffer_bytes(&payload)));
+  CHECK(lb_test_task_prepare(&task, 3, ns, true, 77, 0, lb_buffer_bytes(&payload)));
   lb_buffer_free(&payload);
-  lb_task_step(&task);
-  CHECK(task.io.owner && task.io.state == lb_phase_ready && lb_service_writing(&service, ns));
-  lb_task_dispose(&task);
-  CHECK(!lb_service_writing(&service, ns));
-  CHECK(lb_service_fingerprint(&service, ns) == 0);
+  lb_test_task_step(&task, &service);
+  CHECK(task.pending.first.owner && task.pending.first.state == lb_phase_ready && lb_test_cache_writing(&service, ns));
+  lb_test_task_dispose(&task, &service);
+  CHECK(!lb_test_cache_writing(&service, ns));
+  CHECK(lb_test_cache_fingerprint(&service, ns) == 0);
   payload = batch(17, "second");
-  CHECK(lb_handle(&service, 3, ns, true, 77, lb_service_revision(&service, ns),
+  CHECK(lb_test_handle(&service, 3, ns, true, 77, lb_test_cache_revision(&service, ns),
                   lb_buffer_bytes(&payload), &reply));
   CHECK(reply.data[0] == 0);
   lb_buffer_free(&reply);
   lb_buffer_free(&payload);
-  first_revision = lb_service_revision(&service, ns);
+  first_revision = lb_test_cache_revision(&service, ns);
   lb_u32(&fetch, 1);
   lb_u64(&fetch, 17);
-  CHECK(lb_task_init(&task, &service, 2, ns, false, 77, first_revision, lb_buffer_bytes(&fetch)));
-  lb_task_step(&task);
-  CHECK(task.io.owner);
+  CHECK(lb_test_task_prepare(&task, 2, ns, false, 77, first_revision, lb_buffer_bytes(&fetch)));
+  lb_test_task_step(&task, &service);
+  CHECK(task.pending.first.owner);
   {
     lb_store_io_operation op = {0};
     ssize_t n;
-    CHECK(lb_store_start_io(&task.io, &op).code == lb_error_ok);
+    CHECK(lb_store_start_io(&task.pending.first, &op).code == lb_error_ok);
     n = pread(op.fd, op.buffer, op.length, (off_t)op.offset);
     CHECK(n > 0);
     payload = batch(18, "other record");
-    CHECK(lb_handle(&service, 3, ns, true, 77, first_revision, lb_buffer_bytes(&payload), &reply));
+    CHECK(lb_test_handle(&service, 3, ns, true, 77, first_revision, lb_buffer_bytes(&payload), &reply));
     CHECK(reply.data[0] == 0);
     lb_buffer_free(&reply);
     lb_buffer_free(&payload);
-    CHECK(lb_store_complete_io(&task.io, (int)n).code == lb_error_ok);
-    lb_task_step(&task);
+    CHECK(lb_store_complete_io(&task.pending.first, (int)n).code == lb_error_ok);
+    lb_test_task_step(&task, &service);
     CHECK(task.phase == lb_task_done && task.reply.data[0] == 1 && task.reply.size > 17);
   }
-  lb_task_dispose(&task);
+  lb_test_task_dispose(&task, &service);
   lb_buffer_free(&fetch);
   /* Entire batches validate before any mutation, including truncated facts. */
-  first_revision = lb_service_revision(&service, ns);
+  first_revision = lb_test_cache_revision(&service, ns);
   payload = batch(17, "invalid");
   --payload.size;
-  CHECK(lb_handle(&service, 3, ns, true, 77, first_revision, lb_buffer_bytes(&payload), &reply));
-  CHECK(reply.data[0] == 2 && lb_service_revision(&service, ns) == first_revision);
+  CHECK(lb_test_handle(&service, 3, ns, true, 77, first_revision, lb_buffer_bytes(&payload), &reply));
+  CHECK(reply.data[0] == 2 && lb_test_cache_revision(&service, ns) == first_revision);
   lb_buffer_free(&payload);
   lb_buffer_free(&reply);
-  lb_service_destroy(&service);
+  lb_test_cache_destroy(&service);
   unlink(path);
 }
 int main(void) {

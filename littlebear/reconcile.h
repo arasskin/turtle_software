@@ -1,6 +1,6 @@
 #ifndef LB_RECONCILE_H
 #define LB_RECONCILE_H
-#include "base.h"
+#include "../containers/base.h"
 static const uint8_t lb_recon_MAGIC[] = {'L', 'B', 'R', 3};
 enum {
   lb_recon_ID_BYTES = 8,

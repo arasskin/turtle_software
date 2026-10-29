@@ -13,6 +13,7 @@ Littlebear provides shared synchronization when an application needs it.
 | `containers/` | Shared header-only C containers |
 | `third_party/` | Janet runtime source, pinned AELMDB, Monocypher, xxHash, and browser-fork test dependencies |
 | `docs/` | Native API, protocol, storage, and reconciliation documentation |
+| `examples/canvas/` | Multiplayer canvas: independent Janet/Datafriend hosts synchronized through external Littlebear |
 
 These are the existing components brought together, not yet an application launcher
 or distribution/update system. The native and browser database implementations remain
@@ -20,9 +21,23 @@ separate. Browser storage and identities are currently ephemeral; native Datafri
 provides persistent local storage. A general Janet-to-Datafriend binding is not yet
 part of these utility modules.
 
+## Try the drawing example
+
+```sh
+./examples/canvas/run
+```
+
+Strokes, cursors, and presence are native Datafriend records; the example does not
+use Datafriend Web. It connects to external Littlebear by default. Follow the
+[two-host setup](examples/canvas/README.md#two-independent-local-hosts-one-external-littlebear)
+to test full sync between separate local databases. Two tabs on one host exercise
+local browser fanout. See [deployment](deploy/README.md) for the external server's
+build, release, and rollback procedure.
+
 ## Build and check
 
-Native Datafriend requires CMake, a C99 compiler, and a C++20 compiler for its tests:
+Native Datafriend requires CMake and a C99 compiler. Its tests also require a
+C++20 compiler and libsodium headers for the Littlebear network fixture:
 
 ```sh
 make -C datafriend test
@@ -64,11 +79,12 @@ records base commits and pre-adaptation file hashes; it does not claim those bas
 commits contain every imported change. Original notices and dependency licenses
 remain with their sources. Janet modules retain Visualize's MIT license.
 
-On the original development machine, compatibility symlinks keep DrawDo's
-`datafriend/` and `littlebear/`, Dinopolis' `datafriend/` and browser assets, and
-Visualize's four Janet modules and vendored runtime directory pointing here. They are local conveniences, not
-requirements for cloning or building this repository. Shared containers and vendor
-sources were copied, leaving other applications' dependencies in place.
+DrawDo and Dinopolis now reference this sibling checkout explicitly. Dinopolis
+copies the generated WASM assets into its own static directory. On the original
+development machine, Visualize still uses compatibility links for its four Janet
+modules and vendored runtime. Those links are not requirements for building Turtle
+Software. Shared containers and vendor sources were copied, leaving other
+applications' dependencies in place.
 
 The original nested Datafriend/Littlebear Git metadata and source snapshots are
 preserved locally under ignored `.migration/`; they are not part of this repository's

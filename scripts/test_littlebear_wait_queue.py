@@ -43,7 +43,7 @@ def run(binary, schema, shutdown):
                 peer = sockets.enter_context(connect(port))
                 peer.settimeout(15)
                 signer = Signer(seed)
-                opening = exchange(peer, body(schema, signer.public, payload=b'\1'))
+                opening = exchange(peer, body(schema, signer.public, payload=b'LBR\3\1\0\0'))
                 assert opening[0] == 3
                 clients.append(peer)
                 packets.append(blob(mutation(schema, signer, opening[4], 0, opening[1], 0, payload)))

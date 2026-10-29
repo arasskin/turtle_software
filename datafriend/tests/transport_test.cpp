@@ -69,6 +69,20 @@ int main(int argc, char **argv) {
       }
     };
     wait([&] { return true; });
+    // An empty owner needs only the opening comparison and signed creation.
+    // A separate operation-1 round would restore the old extra round trip.
+    size_t initial_count = 0;
+    auto initial_samples = df_network_samples(x, &initial_count);
+    unsigned initial_openings = 0, initial_applies = 0;
+    for (size_t i = 0; i < initial_count; ++i) {
+      const auto &sample = initial_samples[i];
+      if (sample.channel != 1)
+        continue;
+      require(sample.operation != 1, "Owner opening repeated the first reconciliation round");
+      initial_openings += sample.operation == 0;
+      initial_applies += sample.operation == 3;
+    }
+    require(initial_openings == 1 && initial_applies == 1, "Missing opening or signed empty creation");
     // First establish a signed baseline, then exercise only the fast path.
     edit_store(owner, {{1, DF_ATTR_TITLE, "baseline"}}, {});
     wait([&] { return df_view_size(result) == 1; });

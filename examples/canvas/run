@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")"
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release >&2
+cmake --build build -j 2 >&2
+exec build/janet server.janet "$@"

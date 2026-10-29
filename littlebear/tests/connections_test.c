@@ -1,7 +1,11 @@
 #define _POSIX_C_SOURCE 200809L
-#include "connections.h"
+#include "client_connections.h"
+#include "cache_driver.h"
 #include <stdio.h>
 
+static void test_subscribers_changed(void *context, lb_namespace ns, const lb_publication *p) {
+  subscribers_changed(context, ns, p);
+}
 static uint64_t random_state = 71;
 static uint64_t random_value(void) {
   random_state = random_state * UINT64_C(6364136223846793005) + 1;
@@ -14,7 +18,13 @@ static void check_timers(connections *s) {
   }
 }
 static void pool_and_timers(void) {
+  buffer_pool buffers = CT_ZERO;
+  lb_subscribers subscribers = CT_ZERO;
   connections s = CT_ZERO;
+  s.buffers = &buffers; s.subscribers = &subscribers;
+  subscribers.context = &s;
+  subscribers.reserve = connection_delivery_reserve;
+  subscribers.wake = connection_delivery_wake;
   client *clients[1031];
   s.memory_budget = 32 * 1024 * 1024;
   for (size_t i = 0; i < 1031; ++i) {
@@ -51,29 +61,38 @@ static void pool_and_timers(void) {
   }
   assert(!s.count && !s.timer_count && !s.ready.head && !s.submission_wait.head);
   connections_destroy(&s);
+  buffers_trim(&buffers); assert(!buffers.allocated); ct_map_free(&subscribers.watches);
 }
 static void buffers_and_budget(void) {
+  buffer_pool buffers = CT_ZERO;
+  lb_subscribers subscribers = CT_ZERO;
   connections s = CT_ZERO;
+  s.buffers = &buffers; s.subscribers = &subscribers;
+  subscribers.context = &s;
+  subscribers.reserve = connection_delivery_reserve;
+  subscribers.wake = connection_delivery_wake;
   lb_buffer a = CT_ZERO, b = CT_ZERO;
   s.memory_budget = 32 * 1024 * 1024;
   assert(buffer_borrow(&s, &a, 100));
   uint8_t *original = a.data;
   assert(a.capacity == 128);
-  buffer_return(&s.buffers, &a);
-  assert(!a.data && s.buffers.cached == 128);
+  buffer_return(s.buffers, &a);
+  assert(!a.data && s.buffers->cached == 128);
   assert(buffer_borrow(&s, &b, 100) && b.data == original);
-  buffer_return(&s.buffers, &b);
+  buffer_return(s.buffers, &b);
   assert(buffer_borrow(&s, &a, LB_MAX_FRAME + 4));
   assert(a.capacity == LB_MAX_FRAME + 4);
-  buffer_return(&s.buffers, &a);
-  assert(s.buffers.cached == 128);
+  buffer_return(s.buffers, &a);
+  assert(s.buffers->cached == 128);
   s.memory_budget = 64;
-  assert(!buffer_borrow(&s, &a, 100) && !s.buffers.allocated);
+  assert(!buffer_borrow(&s, &a, 100) && !s.buffers->allocated);
   assert(buffer_borrow(&s, &a, 64));
   assert(!buffer_borrow(&s, &b, 64));
-  buffer_return(&s.buffers, &a);
+  buffer_return(s.buffers, &a);
   connections_destroy(&s);
+  buffers_trim(&buffers); assert(!buffers.allocated); ct_map_free(&subscribers.watches);
 
+  s.buffers = &buffers; s.subscribers = &subscribers;
   s.memory_budget = sizeof(client_slab) + 8 * sizeof(client *);
   client *c = connection_take(&s);
   assert(c);
@@ -85,9 +104,16 @@ static void buffers_and_budget(void) {
   connection_release(&s, c);
   for (size_t i = 0; i < 7; ++i) connection_release(&s, others[i]);
   connections_destroy(&s);
+  buffers_trim(&buffers); assert(!buffers.allocated); ct_map_free(&subscribers.watches);
 }
 static void subscriptions(void) {
+  buffer_pool buffers = CT_ZERO;
+  lb_subscribers subscribers = CT_ZERO;
   connections s = CT_ZERO;
+  s.buffers = &buffers; s.subscribers = &subscribers;
+  subscribers.context = &s;
+  subscribers.reserve = connection_delivery_reserve;
+  subscribers.wake = connection_delivery_wake;
   channel channels[3] = CT_ZERO;
   lb_namespace a = {11, 22}, collision = {11, 33};
   s.memory_budget = 32 * 1024 * 1024;
@@ -96,55 +122,62 @@ static void subscriptions(void) {
   for (size_t i = 0; i < 3; ++i) {
     channels[i].id = (uint32_t)i + 100;
     memcpy(channels[i].name, i == 2 ? &collision : &a, 16);
-    assert(subscription_add(&s, i == 1 ? d : c, &channels[i]));
+    assert(subscription_add(s.subscribers, i == 1 ? &d->peer : &c->peer, &channels[i]));
     subscription_clean(channels[i].subscription);
   }
   queue_remove(c); queue_remove(d);
-  assert(s.watch_count == 2);
-  connections_changed(&s, a, NULL);
-  connections_changed(&s, a, NULL); /* coalesced dirty entries and runnable clients */
+  assert(s.subscribers->watch_count == 2);
+  subscribers_changed(s.subscribers, a, NULL);
+  subscribers_changed(s.subscribers, a, NULL); /* coalesced dirty entries and runnable clients */
   assert(s.ready.head && s.ready.head->queue_next && !s.ready.head->queue_next->queue_next);
-  assert(c->dirty_head == channels[0].subscription && !c->dirty_head->dirty_next);
-  assert(d->dirty_head == channels[1].subscription && !d->dirty_head->dirty_next);
+  assert(c->peer.dirty_head == channels[0].subscription && !c->peer.dirty_head->dirty_next);
+  assert(d->peer.dirty_head == channels[1].subscription && !d->peer.dirty_head->dirty_next);
   assert(!channels[2].subscription->dirty);
   channel moved = channels[0];
   memset(&channels[0], 0, sizeof(channels[0]));
   assert(moved.subscription->channel_id == 100); /* no pointer into movable array */
-  subscription_remove(&s, moved.subscription);
-  subscription_remove(&s, channels[1].subscription);
-  assert(s.watch_count == 1 && !c->dirty_head && !d->dirty_head);
-  connections_changed(&s, collision, NULL);
-  assert(c->dirty_head == channels[2].subscription);
-  subscription_remove(&s, channels[2].subscription);
-  assert(!s.watches.size && !s.watch_count && !s.subscription_count);
+  subscription_remove(s.subscribers, moved.subscription);
+  subscription_remove(s.subscribers, channels[1].subscription);
+  assert(s.subscribers->watch_count == 1 && !c->peer.dirty_head && !d->peer.dirty_head);
+  subscribers_changed(s.subscribers, collision, NULL);
+  assert(c->peer.dirty_head == channels[2].subscription);
+  subscription_remove(s.subscribers, channels[2].subscription);
+  assert(!s.subscribers->watches.size && !s.subscribers->watch_count && !s.subscribers->subscription_count);
   connection_release(&s, c); connection_release(&s, d);
   connections_destroy(&s);
+  buffers_trim(&buffers); assert(!buffers.allocated); ct_map_free(&subscribers.watches);
 }
 static void task_yield_and_unlock(void) {
   char path[] = "/tmp/littlebear-connections-XXXXXX";
   int fd = mkstemp(path);
-  lb_service service = CT_ZERO;
+  lb_test_cache service = CT_ZERO;
+  buffer_pool buffers = CT_ZERO;
+  lb_subscribers subscribers = CT_ZERO;
   connections s = CT_ZERO;
+  s.buffers = &buffers; s.subscribers = &subscribers;
+  subscribers.context = &s;
+  subscribers.reserve = connection_delivery_reserve;
+  subscribers.wake = connection_delivery_wake;
   lb_task task = CT_ZERO;
   lb_buffer payload = CT_ZERO;
   channel ch = CT_ZERO;
   lb_namespace ns = {17, 23};
   assert(fd >= 0);
   close(fd);
-  assert(lb_service_create(&service, path, 5, 1024 * 1024).code == lb_error_ok);
+  assert(lb_test_cache_create(&service, path, 5, 1024 * 1024).code == lb_error_ok);
   unlink(path);
   s.memory_budget = 16 * 1024 * 1024;
-  service.changed = connections_changed;
-  service.changed_context = &s;
+  service.changed = test_subscribers_changed;
+  service.changed_context = s.subscribers;
   client *c = connection_take(&s);
   assert(c);
   memcpy(ch.name, &ns, 16);
   ch.id = 7;
   /* The publication path resolves subscriptions through the channel index. */
-  c->channels = &ch;
-  c->channel_count = 1;
-  assert(ct_map_put(&c->channel_index, ch.id, 0));
-  assert(subscription_add(&s, c, &ch));
+  c->peer.channels = &ch;
+  c->peer.channel_count = 1;
+  assert(ct_map_put(&c->peer.channel_index, ch.id, 0));
+  assert(subscription_add(s.subscribers, &c->peer, &ch));
   subscription_clean(ch.subscription);
   queue_remove(c);
   lb_u32(&payload, 193);
@@ -152,34 +185,41 @@ static void task_yield_and_unlock(void) {
     lb_u64(&payload, i);
     lb_u8(&payload, 0); /* synchronous deletion of absent records */
   }
-  assert(lb_task_init(&task, &service, 3, ns, true, 5, 0, lb_buffer_bytes(&payload)));
-  lb_task_step_budget(&task, 64);
-  assert(task.position == 64 && task.locked && task.phase != lb_task_done);
-  assert(!c->dirty_head && !c->queue);
-  lb_task_dispose(&task); /* aborted write unlock must wake its subscribers */
-  assert(c->dirty_head == ch.subscription && c->queue == &s.ready);
+  assert(lb_test_task_prepare(&task, 3, ns, true, 5, 0, lb_buffer_bytes(&payload)));
+  lb_test_task_step_budget(&task, &service, 64);
+  assert(lb_test_write_batch(&task)->position == 64 && lb_test_write_locked(&task) && task.phase != lb_task_done);
+  assert(!c->peer.dirty_head && !c->queue);
+  lb_test_task_dispose(&task, &service); /* aborted write unlock must wake its subscribers */
+  assert(c->peer.dirty_head == ch.subscription && c->queue == &s.ready);
   subscription_clean(ch.subscription);
   queue_remove(c);
-  assert(lb_task_init(&task, &service, 3, ns, true, 5,
-                      lb_service_revision(&service, ns), lb_buffer_bytes(&payload)));
+  assert(lb_test_task_prepare(&task, 3, ns, true, 5,
+                      lb_test_cache_revision(&service, ns), lb_buffer_bytes(&payload)));
   for (size_t i = 1; i <= 3; ++i) {
-    lb_task_step_budget(&task, 64);
-    assert(task.position == i * 64 && task.locked && !c->dirty_head);
+    lb_test_task_step_budget(&task, &service, 64);
+    assert(lb_test_write_batch(&task)->position == i * 64 && lb_test_write_locked(&task) && !c->peer.dirty_head);
   }
-  lb_task_step_budget(&task, 64);
-  assert(task.phase == lb_task_done && !task.locked && c->dirty_head);
-  lb_task_dispose(&task);
+  lb_test_task_step_budget(&task, &service, 64);
+  assert(task.phase == lb_task_done && !lb_test_write_locked(&task) && c->peer.dirty_head);
+  lb_test_task_dispose(&task, &service);
   lb_buffer_free(&payload);
-  subscription_remove(&s, ch.subscription);
-  ct_map_free(&c->channel_index);
-  c->channels = NULL;
-  c->channel_count = 0;
+  subscription_remove(s.subscribers, ch.subscription);
+  ct_map_free(&c->peer.channel_index);
+  c->peer.channels = NULL;
+  c->peer.channel_count = 0;
   connection_release(&s, c);
   connections_destroy(&s);
-  lb_service_destroy(&service);
+  buffers_trim(&buffers); assert(!buffers.allocated); ct_map_free(&subscribers.watches);
+  lb_test_cache_destroy(&service);
 }
 static void capacity_fifo(void) {
+  buffer_pool buffers = CT_ZERO;
+  lb_subscribers subscribers = CT_ZERO;
   connections s = CT_ZERO;
+  s.buffers = &buffers; s.subscribers = &subscribers;
+  subscribers.context = &s;
+  subscribers.reserve = connection_delivery_reserve;
+  subscribers.wake = connection_delivery_wake;
   lb_store store = CT_ZERO;
   s.memory_budget = 16 * 1024 * 1024;
   client *a = connection_take(&s), *b = connection_take(&s), *fresh = connection_take(&s);
@@ -209,6 +249,7 @@ static void capacity_fifo(void) {
   connection_release(&s, fresh);
   assert(!s.storage_wait_count);
   connections_destroy(&s);
+  buffers_trim(&buffers); assert(!buffers.allocated); ct_map_free(&subscribers.watches);
 }
 static lb_buffer write_payload(void) {
   lb_buffer payload = CT_ZERO;
@@ -230,7 +271,7 @@ static lb_buffer write_payload(void) {
 static void capacity_resume(void) {
   char path[] = "/tmp/littlebear-capacity-XXXXXX";
   int fd = mkstemp(path);
-  lb_service service = CT_ZERO;
+  lb_test_cache service = CT_ZERO;
   lb_task writer = CT_ZERO, reader = CT_ZERO, other = CT_ZERO;
   lb_store_request blocker = CT_ZERO, conflict = CT_ZERO;
   lb_namespace a = {41, 1}, b = {42, 1};
@@ -238,59 +279,59 @@ static void capacity_resume(void) {
   char read_buffer[64];
   assert(fd >= 0);
   close(fd);
-  assert(lb_service_create(&service, path, 5, 1024 * 1024).code == lb_error_ok);
+  assert(lb_test_cache_create(&service, path, 5, 1024 * 1024).code == lb_error_ok);
   unlink(path);
   service.cache.pending_limit = 1;
   assert(lb_store_create_namespace(&service.cache, a).code == lb_error_ok);
   assert(lb_store_prepare_write(&service.cache, &blocker, a, 1, "block", 5, 0).code == lb_error_ok);
   assert(lb_store_prepare_read(&service.cache, &conflict, a, 1, read_buffer, 64).code == lb_error_busy);
-  assert(lb_task_init(&writer, &service, 3, b, true, 5, 0, lb_buffer_bytes(&payload)));
-  lb_task_step(&writer);
-  assert(writer.waiting_capacity && writer.locked && writer.position == 0 && !writer.io.owner);
-  assert(writer.phase == lb_task_write && !writer.reply.size && service.cache.pending_count == 1);
+  assert(lb_test_task_prepare(&writer, 3, b, true, 5, 0, lb_buffer_bytes(&payload)));
+  lb_test_task_step(&writer, &service);
+  assert(writer.waiting_capacity && lb_test_write_locked(&writer) && lb_test_write_batch(&writer)->position == 0 && !writer.pending.first.owner);
+  assert(writer.phase == lb_task_active && !writer.reply.size && service.cache.pending_count == 1);
   uint64_t version = writer.version;
   assert(lb_store_cancel(&blocker).code == lb_error_cancelled);
-  lb_task_step(&writer);
-  assert(!writer.waiting_capacity && writer.io.owner && writer.version == version);
-  assert(lb_perform(&writer.io).code == lb_error_ok);
+  lb_test_task_step(&writer, &service);
+  assert(!writer.waiting_capacity && writer.pending.first.owner && writer.version == version);
+  assert(lb_test_perform(&writer.pending.first).code == lb_error_ok);
   /* Exhaust capacity between records: resume must not skip/reapply record 1. */
   assert(lb_store_prepare_write(&service.cache, &blocker, a, 1, "block", 5, 0).code == lb_error_ok);
-  lb_task_step(&writer);
-  assert(writer.waiting_capacity && writer.position == 1 && writer.locked && !writer.reply.size);
+  lb_test_task_step(&writer, &service);
+  assert(writer.waiting_capacity && lb_test_write_batch(&writer)->position == 1 && lb_test_write_locked(&writer) && !writer.reply.size);
   assert(lb_store_cancel(&blocker).code == lb_error_cancelled);
-  lb_task_step(&writer);
-  assert(writer.io.owner && writer.io.key == 2);
-  assert(lb_perform(&writer.io).code == lb_error_ok);
-  lb_task_step(&writer);
-  assert(writer.phase == lb_task_done && !writer.locked && writer.reply.data[0] == 0);
-  lb_task_dispose(&writer);
+  lb_test_task_step(&writer, &service);
+  assert(writer.pending.first.owner && writer.pending.first.key == 2);
+  assert(lb_test_perform(&writer.pending.first).code == lb_error_ok);
+  lb_test_task_step(&writer, &service);
+  assert(writer.phase == lb_task_done && !lb_test_write_locked(&writer) && writer.reply.data[0] == 0);
+  lb_test_task_dispose(&writer, &service);
   assert(lb_index_summary(lb_directory_get(&service.cache.namespaces, b),
                           (ct_range){0, 0, false}).count == 2);
 
   lb_u32(&ids, 2); lb_u64(&ids, 1); lb_u64(&ids, 2);
   assert(lb_store_prepare_write(&service.cache, &blocker, a, 1, "block", 5, 0).code == lb_error_ok);
-  assert(lb_task_init(&reader, &service, 2, b, false, 5, version, lb_buffer_bytes(&ids)));
-  lb_task_step(&reader);
-  assert(reader.waiting_capacity && reader.phase == lb_task_read && reader.position == 0);
+  assert(lb_test_task_prepare(&reader, 2, b, false, 5, version, lb_buffer_bytes(&ids)));
+  lb_test_task_step(&reader, &service);
+  assert(reader.waiting_capacity && reader.phase == lb_task_active && ((lb_fetch_records_state *)reader.state)->position == 0);
   /* A different writer changes the namespace while the read is parked. */
-  assert(lb_task_init(&other, &service, 3, b, true, 5, version, lb_buffer_bytes(&payload)));
-  lb_task_step(&other);
-  assert(other.waiting_capacity && other.locked);
+  assert(lb_test_task_prepare(&other, 3, b, true, 5, version, lb_buffer_bytes(&payload)));
+  lb_test_task_step(&other, &service);
+  assert(other.waiting_capacity && lb_test_write_locked(&other));
   assert(lb_store_cancel(&blocker).code == lb_error_cancelled);
-  lb_task_step(&reader);
-  assert(reader.phase == lb_task_done && reader.reply.data[0] == 1 && !reader.io.owner);
-  lb_task_dispose(&reader);
-  lb_task_dispose(&other); /* disconnect while waiting releases the namespace lock */
-  assert(!lb_service_writing(&service, b) && !service.cache.pending_count);
+  lb_test_task_step(&reader, &service);
+  assert(reader.phase == lb_task_done && reader.reply.data[0] == 1 && !reader.pending.first.owner);
+  lb_test_task_dispose(&reader, &service);
+  lb_test_task_dispose(&other, &service); /* disconnect while waiting releases the namespace lock */
+  assert(!lb_test_cache_writing(&service, b) && !service.cache.pending_count);
 
   /* The synchronous API cannot wait on an externally owned request. */
   assert(lb_store_prepare_write(&service.cache, &blocker, a, 1, "block", 5, 0).code == lb_error_ok);
-  assert(lb_handle(&service, 3, b, true, 5, lb_service_revision(&service, b),
+  assert(lb_test_handle(&service, 3, b, true, 5, lb_test_cache_revision(&service, b),
                    lb_buffer_bytes(&payload), &reply));
-  assert(reply.data[0] == 1 && !lb_service_writing(&service, b));
+  assert(reply.data[0] == 1 && !lb_test_cache_writing(&service, b));
   assert(lb_store_cancel(&blocker).code == lb_error_cancelled);
   lb_buffer_free(&reply); lb_buffer_free(&ids); lb_buffer_free(&payload);
-  lb_service_destroy(&service);
+  lb_test_cache_destroy(&service);
 }
 int main(void) {
   pool_and_timers();

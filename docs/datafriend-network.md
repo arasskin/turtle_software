@@ -209,16 +209,23 @@ uses this same build, explicitly binding port 7777 on all interfaces to preserve
 the deployment endpoint. Standalone defaults remain loopback:7778. Updating an
 existing droplet requires reinstalling the unit; no live deployment was performed.
 
-Reads and reconciliation are public. Start requests never create a namespace,
-even when the client declares push intent. An absent namespace can be reconciled
+Reads and reconciliation are public. Begin-owner-sync requests carry the first
+negentropy packet and never create a namespace. An absent namespace can be reconciled
 as an empty source without allocating a namespace or revision entry. Readers
 still receive absent status and retain their local copy.
 
+Operation 0 compares the first owner offer against the current server state and
+returns the server epoch and revision together with its reconciliation response.
+Subsequent operation-1 rounds must match that version. The client pins its local
+snapshot before sending the first offer and processes the response against that
+same snapshot.
+
 The server piggybacks a 32-byte challenge on the first differing reconciliation
-response for a push. For an absent namespace it includes the challenge in the
-existing start/status response instead. There is no separate challenge operation
+response for a push, including operation 0. An absent namespace always receives
+a challenge in the opening response, even when the owner is empty, so a signed
+empty apply can establish its presence. There is no separate challenge operation
 or authentication round trip. One challenge covers every write batch in the
-exchange and subsequent optimistic writes, with its sequence starting at zero. Equal pushes (including the small
+exchange and subsequent optimistic writes, with its sequence starting at zero. Equal pushes to existing namespaces (including the small
 initial-offer optimization) and all pulls skip the challenge. The `LBR3`
 reconciliation engine and its packets are unchanged; this metadata belongs only
 to the outer sync envelope.
@@ -277,7 +284,7 @@ Request body: `LBS5` magic (three ASCII bytes and byte 5), uint32 request ID,
 uint32 channel ID, uint8 operation, length-prefixed public-key namespace/schema,
 uint64 boot nonce, uint64 revision, length-prefixed payload. Request IDs are
 nonzero; channel IDs are nonzero except for connection heartbeats. Channels stay
-bound to their namespace until unsubscribe/disconnect. Apply requests append 32
+bound to their namespace until channel close/disconnect. Apply requests append 32
 challenge bytes, a uint64 sequence and a 64-byte detached signature; other requests
 have no auth trailer. The signed bytes run from `LBS5` through the sequence,
 including both IDs and excluding the outer frame length and signature. The schema
@@ -285,15 +292,21 @@ is the generated shared attribute fingerprint. Older envelopes are rejected.
 
 | Operation | Payload / behavior |
 | --- | --- |
-| 0 | Start/version; one byte, 1 for owner intent or 0 for public status. Never creates a namespace. |
-| 1 | Reconciliation packet. |
-| 2 | Fetch: uint32 count and uint64 keys. |
-| 3 | Signed apply: uint32 count, then key/presence/optional blob records. |
-| 4 | Subscribe: empty payload, returns opening or absent/waiting status. |
-| 5 | Unsubscribe: empty payload, releases the channel. |
-| 6 | Signed optimistic apply: uint64 resulting namespace fingerprint, followed by the ordinary put/delete batch. Reuses the connection challenge/sequence. Matching fingerprint is silent; mismatch emits unsolicited status 6 and requires a fresh start. |
-| 7 | Heartbeat: channel 0, empty namespace/payload. |
-| 8 | Subscribe with optimistic batch delivery enabled; empty payload. Initial response is an ordinary reconciliation opening. |
+| 0 | Begin owner sync: first `LBR3` reconciliation packet. Returns the first comparison, current epoch/revision and status 0 (present) or 3 (absent). Resets authorization after a successful opening and includes a challenge if upload is needed. Never creates a namespace. |
+| 1 | `continue_reconciliation`: `LBR3` packet against the supplied epoch/revision. Used by owners and readers. |
+| 2 | `fetch_records`: uint32 count and uint64 keys. |
+| 3 | `apply_records_at_revision`: signed, revision-checked apply; uint32 count, then key/presence/optional blob records. |
+| 4 | Retired; rejected. Use operation 8 with delivery mode 0. |
+| 5 | `close_channel`: empty payload; releases the channel, its subscription and owner authorization state. |
+| 6 | `stream_record_changes`: signed streamed apply; uint64 resulting namespace fingerprint, followed by the ordinary put/delete batch. Reuses the connection challenge/sequence. Matching fingerprint is silent; mismatch emits unsolicited status 6 and requires a fresh start. |
+| 7 | `heartbeat`: channel 0, empty namespace/payload. |
+| 8 | `subscribe_to_records`: one delivery-mode byte, 0 for reconciliation notifications or 1 for record batches with reconciliation fallback. Both return an initial reconciliation opening or absent/busy status. Repeating the request changes the mode. |
+
+The old one-byte operation-0 payload, operation 4, and empty operation-8 payload
+are rejected. Deploy the updated server and
+clients together; this change retains the envelope magic and operation IDs but
+changes the operation-0 contract and operation-8 payload. Read-only clients begin
+with operation 8 instead of operation 0.
 
 Fact blobs retain
 `XXH64(BE64(EA) || value)` followed by typed value bytes. Only signed apply can
@@ -303,18 +316,20 @@ Responses carry uint32 request ID, uint32 channel ID, uint8 status/flags, uint64
 boot nonce, uint64 revision, then payload: a 25-byte header. Request ID zero
 identifies an unsolicited server event. Bit 7 of status marks 32 challenge
 bytes inserted after the revision; the lower seven bits hold the status. The
-challenge appears once per owner exchange, on absent push start or the first
-differing reconciliation reply. Reads and equal pushes do not require challenges.
+challenge appears once per owner exchange, on an absent owner opening or the first
+differing reconciliation reply (which may be operation 0). Reads and equal pushes to existing namespaces do not
+require challenges.
 
 Status 0 succeeds; 1 restarts the exchange (with a fresh opening when stable, or
 empty payload while writing); 2 rejects; 3 means absent; 4 is an unsolicited
 opening for an existing namespace; 5 is an unsolicited optimistic update with
 uint64 resulting fingerprint followed by put/delete records. Status 5 is sent
-only to operation-8 subscribers. Status 6 requests owner reconciliation after a
+only to operation-8 subscribers using delivery mode 1. Status 6 requests owner reconciliation after a
 streamed-write mismatch; it has no payload. Later queued deltas are discarded
 (with signature sequences still checked) until a successful new start. Rejected
-streamed writes emit unsolicited status 2; clients reconnect. Opening payloads are ordinary `LBR3` initial
-packets, preserving the small-set initial-offer optimization. The client processes
+streamed writes emit unsolicited status 2; clients reconnect. Subscriber opening payloads are ordinary `LBR3` initial
+packets. Owner opening payloads are responses to the client's first `LBR3` packet,
+preserving the small-set initial-offer optimization. The client processes
 these in the difference-collecting role and requests values at the end; the server
 remains stateless between reconciliation messages. Record fetch replies carry
 count and key/blob pairs. The server validates apply syntax and fingerprints
